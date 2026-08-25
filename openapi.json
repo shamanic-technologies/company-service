@@ -407,6 +407,14 @@
           "elevatorPitch": {
             "type": "string",
             "nullable": true
+          },
+          "colors": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "The brand's own colour palette — provider-ordered hex strings. `null` when we have no colours for this brand. Same field, same meaning as on BrandDetail."
           }
         },
         "required": [
@@ -417,7 +425,8 @@
           "createdAt",
           "updatedAt",
           "logoUrl",
-          "elevatorPitch"
+          "elevatorPitch",
+          "colors"
         ]
       },
       "GetBrandResponse": {
@@ -467,6 +476,14 @@
             "nullable": true,
             "description": "The brand's WhatsApp link — the click destination for the \"maximize WhatsApp conversations\" goal. `null` when unset (no sensible default, unlike clickDestinationUrl). Per-brand config, set via PUT /orgs/brands/{brandId}/whatsapp-link."
           },
+          "colors": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "The brand's own colour palette — hex strings in the order logo.dev's Brand API returns them (e.g. [\"#000103\",\"#ce2e36\",\"#003366\"]). Nothing is pre-filtered or ranked; the consumer selects. `null` means WE HAVE NO COLOURS for this brand (the provider has not indexed the domain yet, or has no palette for it) — a first-class answer a consumer falls back to its own charter on. No colour is ever invented, defaulted, or derived from the logo, the name, or the domain."
+          },
           "createdAt": {
             "type": "string",
             "description": "ISO timestamp when the brand row was created."
@@ -484,6 +501,7 @@
           "logoUrl",
           "clickDestinationUrl",
           "whatsAppLink",
+          "colors",
           "createdAt",
           "updatedAt"
         ]

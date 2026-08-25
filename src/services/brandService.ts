@@ -20,13 +20,14 @@
  */
 
 import { eq, and, sql, isNull } from 'drizzle-orm';
-import { db, brands, orgBrands, brandClickDestinations, brandWhatsappLinks } from '../db';
+import { db, brands, orgBrands, brandClickDestinations, brandWhatsappLinks, brandColors } from '../db';
 import { normalizeUrl, extractDomain } from '../lib/url-utils';
 import { Caller, OrgCaller } from '../lib/chat-client';
 import { buildLogoDevUrl } from '../lib/logo-dev';
 import { searchBrandNameByDomain } from '../lib/logo-dev-search';
 import { getBrandCheckoutStatus } from '../lib/client-client';
 import { rewriteBrandReferences } from './brandMergeService';
+import { enqueueBrandColors, forgetBrandColors, resetBrandColorsForNewDomain } from './brandColorsService';
 
 interface Brand {
   id: string;
@@ -60,6 +61,18 @@ export interface BrandDetail {
   // presence is the only "set" signal. Per-brand config, mirrors
   // click-destination scoping — never on the brand identity row.
   whatsAppLink: string | null;
+  // The brand's OWN colour palette, provider-ordered hex strings, exactly as
+  // logo.dev's Brand API reports them (`["#000103","#ce2e36","#003366"]`). The
+  // consumer does its own selection, so nothing is pre-filtered or ranked.
+  //
+  // `null` is a FIRST-CLASS answer meaning "we have no colours for this brand"
+  // — the domain is not indexed by the provider yet, the retrieval has not run,
+  // or the provider has no palette for it. A consumer falls back to its own
+  // charter on null, so a wrong or invented colour would be worse than none:
+  // nothing here defaults, guesses, or derives a colour from the logo, the
+  // name, or the domain. Retrieval is a decoupled cadence, never a read — see
+  // services/brandColorsService.ts.
+  colors: string[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +116,7 @@ export async function getBrandDetail(
       logoUrl: brands.logoUrl,
       clickDestinationUrl: brandClickDestinations.clickDestinationUrl,
       whatsAppLink: brandWhatsappLinks.whatsappLink,
+      colors: brandColors.colors,
       createdAt: brands.createdAt,
       updatedAt: brands.updatedAt,
     })
@@ -114,6 +128,12 @@ export async function getBrandDetail(
     .leftJoin(
       brandWhatsappLinks,
       eq(brandWhatsappLinks.brandId, brands.id)
+    )
+    // Colours are brand IDENTITY (one palette per domain), so this joins on the
+    // brand alone — no org scoping, same as name and logo.
+    .leftJoin(
+      brandColors,
+      eq(brandColors.brandId, brands.id)
     )
     .where(eq(brands.id, brandId))
     .limit(1);
@@ -137,6 +157,10 @@ export async function getBrandDetail(
     clickDestinationUrl: row.clickDestinationUrl ?? row.url,
     // No sensible default (a brand may have no WhatsApp) — null when unset.
     whatsAppLink: row.whatsAppLink ?? null,
+    // Null until the provider actually answers with a palette. A pending or
+    // given-up retrieval reads exactly like a brand nobody ever asked about,
+    // which is correct: in all three cases we have no colours to serve.
+    colors: row.colors ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -659,6 +683,14 @@ export async function getOrCreateBrand(
     brand.name = await fillBrandNameOnCreate(brand.id, brand.url, brand.domain);
   }
 
+  // Put the brand in line for colour retrieval. Local insert only — the metered
+  // logo.dev Brand call happens later on its own cadence, because that endpoint
+  // answers 202 for a domain it has not indexed and only carries the palette on
+  // a LATER call. Idempotent, so an existing brand is untouched.
+  if (brand.domain) {
+    await enqueueBrandColors(brand.id);
+  }
+
   return brand;
 }
 
@@ -830,6 +862,10 @@ export async function updateBrandWebsite(
 
   if (!updated) throw new Error(`Brand not found: ${brandId}`);
 
+  // The brand now stands for a DIFFERENT domain, so any palette we hold is
+  // another business's colours. Drop it and queue the new domain.
+  await resetBrandColorsForNewDomain(brandId);
+
   console.log(`[brand-service] Attached website ${normalizedUrl} (domain ${domain}) to brand ${brandId}`);
   return updated;
 }
@@ -872,6 +908,10 @@ async function takeOverDomain(params: {
     .update(brands)
     .set({ domain: null, url: null, updatedAt: sql`NOW()` })
     .where(eq(brands.id, holderBrandId));
+
+  // The holder has no domain left to derive colours from. Forget its palette
+  // rather than keep serving the colours of a domain it no longer holds.
+  await forgetBrandColors(holderBrandId);
 
   if (callerClaimsHolder) {
     // Stop the emptied shell from polluting the caller's brand list. Other orgs'

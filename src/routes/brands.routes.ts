@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { eq, and, desc, inArray } from 'drizzle-orm';
-import { db, brands, orgBrands, brandsOld } from '../db';
+import { db, brands, orgBrands, brandsOld, brandColors } from '../db';
 import { query } from '../db/utils';
 import { listRuns } from '../lib/runs-client';
 import { getOrCreateBrand, createBrandWithoutWebsite, updateBrandWebsite, BrandDomainConflictError, getBrandDetail, resolveBrandByDomain, titlecaseDomain } from '../services/brandService';
@@ -140,9 +140,13 @@ orgRouter.get('/brands', async (req: Request, res: Response) => {
         createdAt: brands.createdAt,
         updatedAt: brands.updatedAt,
         logoUrl: brands.logoUrl,
+        // Provider-ordered hex strings, `null` when we have no colours for this
+        // brand. Identity, not per-org config — joined on the brand alone.
+        colors: brandColors.colors,
       })
       .from(orgBrands)
       .innerJoin(brands, eq(brands.id, orgBrands.brandId))
+      .leftJoin(brandColors, eq(brandColors.brandId, brands.id))
       .where(eq(orgBrands.orgId, orgId))
       .orderBy(desc(brands.updatedAt));
 

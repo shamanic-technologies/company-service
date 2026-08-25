@@ -43,6 +43,7 @@ import intakeFormRoutes from './routes/intake-form.routes';
 import thesisRoutes from './routes/thesis.routes';
 import usersRoutes from './routes/users.routes';
 import { assertEveryMigrationRan } from './db/verify-migrations';
+import { refreshPendingBrandColors } from './services/brandColorsService';
 
 const app = express();
 const port = process.env.PORT || 3005;
@@ -164,6 +165,37 @@ async function cleanupExpiredExtractedFields(): Promise<void> {
   }
 }
 
+// ── Brand-colour retrieval cadence ───────────────────────────────
+// The logo.dev Brand endpoint answers 202 "not found, looking up" for a domain
+// it has not indexed and only carries the palette on a LATER call, so the
+// retrieval CANNOT ride the write that enqueued the brand — it needs a cadence
+// of its own. Six of our seven live domains answered 202 on first contact
+// (measured 2026-08-25), and were still 202 two minutes later.
+//
+// The endpoint is metered on a separate prepaid credit grant with NO quota
+// header, so the pass bounds its own spend: a queue rather than a table sweep,
+// a per-run cap, a per-brand attempt cap and a monthly budget counted off the
+// call ledger. See services/brandColorsService.ts.
+//
+// Started AFTER app.listen() per the boot-window rule, and once ~90s after boot
+// so a brand that arrived during the previous window is not waiting 6 hours.
+const BRAND_COLORS_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const BRAND_COLORS_REFRESH_BOOT_DELAY_MS = 90 * 1000; // 90 seconds after boot
+
+function startBrandColorsRefresh(): void {
+  setTimeout(() => {
+    refreshPendingBrandColors().catch((err) =>
+      console.error('[brand-service] Brand-colour refresh (boot) failed:', err),
+    );
+  }, BRAND_COLORS_REFRESH_BOOT_DELAY_MS);
+
+  setInterval(() => {
+    refreshPendingBrandColors().catch((err) =>
+      console.error('[brand-service] Brand-colour refresh (interval) failed:', err),
+    );
+  }, BRAND_COLORS_REFRESH_INTERVAL_MS);
+}
+
 function startExpiredFieldsCleanup(): void {
   setTimeout(() => {
     cleanupExpiredExtractedFields().catch((err) =>
@@ -221,6 +253,7 @@ if (process.env.NODE_ENV === "test") {
       markMigrationsReady();
       console.log("Migrations complete");
       startExpiredFieldsCleanup();
+      startBrandColorsRefresh();
     })
     .catch((err) => {
       markMigrationsFailed(err);
