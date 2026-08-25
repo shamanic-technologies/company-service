@@ -1490,3 +1490,71 @@ export const brandTransfers = pgTable("brand_transfers", {
 // Deprecated: tasks, tasks_runs, tasks_runs_costs tables removed from schema.
 // Run tracking is now handled by runs-service via src/lib/runs-client.ts.
 // The physical tables still exist in the database but are no longer used.
+
+/**
+ * A brand's own colour palette, as the logo.dev Brand API reports it.
+ *
+ * IDENTITY, not per-org config: a palette belongs to the DOMAIN, so it is keyed
+ * on `brand_id` alone (like `name` and `logo_url`) rather than on
+ * `(org_id, brand_id)` — two orgs claiming one domain see the same colours
+ * because there is only one set of colours to see.
+ *
+ * `colors` is a jsonb ARRAY OF HEX STRINGS in the order the provider gives them
+ * (`["#000103","#ce2e36","#003366"]`). The consumer does its own selection, so
+ * nothing here filters or ranks them. It stays NULL until the provider actually
+ * answers with a palette — a null/absent row IS the answer "we have no colours
+ * for this brand", which the dashboard falls back to its own charter on. No
+ * colour is ever invented, defaulted or derived from anything but the provider.
+ *
+ * The remaining columns exist because the Brand endpoint is ASYNCHRONOUS: an
+ * un-indexed domain answers `202 {"msg":"not found, looking up"}` and is queued
+ * for indexing on logo.dev's side, so the palette can only be read on a LATER
+ * call. That is why this is a queue and not a fetch-and-store: `status`
+ * 'pending' is the retry cadence's work list, 'resolved' carries colours, and
+ * 'unavailable' is terminal (attempts exhausted, or the provider indexed the
+ * domain and has no palette for it).
+ */
+export const brandColors = pgTable("brand_colors", {
+	brandId: uuid("brand_id").primaryKey().notNull(),
+	/** Provider-ordered hex strings. NULL until a call actually returns a palette. */
+	colors: jsonb().$type<string[]>(),
+	/** pending = still to retrieve | resolved = colours held | unavailable = terminal, no colours. */
+	status: text().default('pending').notNull(),
+	/** Metered Brand-endpoint calls spent on this brand. Bounded by MAX_ATTEMPTS. */
+	attempts: integer().default(0).notNull(),
+	lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true, mode: 'string' }),
+	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	foreignKey({
+		columns: [table.brandId],
+		foreignColumns: [brands.id],
+		name: "brand_colors_brand_id_fkey"
+	}).onDelete("cascade"),
+	index("brand_colors_pending_idx").on(table.status, table.attempts),
+	check("brand_colors_status_check", sql`${table.status} IN ('pending','resolved','unavailable')`),
+]);
+
+/**
+ * One row per METERED logo.dev Brand-endpoint call.
+ *
+ * The Brand endpoint is billed against a SEPARATE prepaid credit grant (~100
+ * calls/month on Community), it hard-fails 402 when the grant is exhausted, and
+ * it exposes NO quota header — so there is no way to ASK how much is left. This
+ * ledger is the meter we do not get from the vendor: the retry cadence counts
+ * this month's rows before it spends anything and stops at its own budget, well
+ * under the grant. It doubles as the audit trail for a call class that costs
+ * real money and has no other trace.
+ */
+export const logoDevBrandCalls = pgTable("logo_dev_brand_calls", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	domain: text().notNull(),
+	/** colors | pending | no_colors | exhausted | failed */
+	outcome: text().notNull(),
+	httpStatus: integer("http_status"),
+	detail: text(),
+	calledAt: timestamp("called_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+	index("logo_dev_brand_calls_called_at_idx").on(table.calledAt),
+]);

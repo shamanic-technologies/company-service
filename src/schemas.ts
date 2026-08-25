@@ -64,6 +64,7 @@ export const BrandSummarySchema = z
     updatedAt: z.string().nullable(),
     logoUrl: z.string().nullable(),
     elevatorPitch: z.string().nullable(),
+    colors: z.array(z.string()).nullable().openapi({ description: 'The brand\'s own colour palette — provider-ordered hex strings. `null` when we have no colours for this brand. Same field, same meaning as on BrandDetail.' }),
   })
   .openapi('BrandSummary');
 
@@ -91,6 +92,7 @@ export const BrandDetailSchema = z
     logoUrl: z.string().nullable().openapi({ description: 'Logo image URL. Lazy-filled with a deterministic logo.dev URL on first read if missing. `null` for a no-website brand (no domain to build one from).' }),
     clickDestinationUrl: z.string().nullable().openapi({ description: 'Page outreach clicks should land on. Defaults to the brand\'s own landing URL (`url`) when the user has not set an override. `null` only for a no-website brand with no override (no landing URL to fall back to). Per-brand config, set via PUT /orgs/brands/{brandId}/click-destination.' }),
     whatsAppLink: z.string().nullable().openapi({ description: 'The brand\'s WhatsApp link — the click destination for the "maximize WhatsApp conversations" goal. `null` when unset (no sensible default, unlike clickDestinationUrl). Per-brand config, set via PUT /orgs/brands/{brandId}/whatsapp-link.' }),
+    colors: z.array(z.string()).nullable().openapi({ description: 'The brand\'s own colour palette — hex strings in the order logo.dev\'s Brand API returns them (e.g. ["#000103","#ce2e36","#003366"]). Nothing is pre-filtered or ranked; the consumer selects. `null` means WE HAVE NO COLOURS for this brand (the provider has not indexed the domain yet, or has no palette for it) — a first-class answer a consumer falls back to its own charter on. No colour is ever invented, defaulted, or derived from the logo, the name, or the domain.' }),
     createdAt: z.string().openapi({ description: 'ISO timestamp when the brand row was created.' }),
     updatedAt: z.string().openapi({ description: 'ISO timestamp when the brand row was last updated.' }),
   })
