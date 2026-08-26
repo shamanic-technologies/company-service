@@ -2532,15 +2532,30 @@ registry.registerPath({
     'plausible set and do NOT derive one from the stored economics. ' +
     'The org is taken from `x-org-id`; without it, it is resolved when exactly ONE org claims the ' +
     'brand, and the read is rejected 400 `ORG_REQUIRED` when several do — each org configures the ' +
-    'brand independently, so there is no shared answer to guess at.',
-  request: { params: z.object({ brandId: z.string().uuid() }) },
+    'brand independently, so there is no shared answer to guess at. ' +
+    "`?offerId=` names WHICH offer's funnels are wanted: every rate and the lifetime revenue hang " +
+    'off the offer, so a brand-wide answer averages across everything the brand sells.',
+  request: {
+    params: z.object({ brandId: z.string().uuid() }),
+    query: z.object({
+      offerId: z
+        .string()
+        .uuid()
+        .optional()
+        .openapi({
+          description:
+            "WHICH offer's declared active funnels to return, with that offer's own lifetime revenue and rates. Omit for a brand selling one thing (unchanged behaviour); a brand holding SEVERAL offers answers 409 SEVERAL_OFFERS until one is named. An offer that does not belong to this brand is 404 OFFER_NOT_FOUND, never swapped for another.",
+        }),
+    }),
+  },
   responses: {
     200: {
       description: 'The declared funnels (possibly empty)',
       content: { 'application/json': { schema: GetSalesFunnelsResponseSchema } },
     },
-    400: { description: 'Invalid brand ID format' },
-    404: { description: 'No such brand' },
+    400: { description: 'Invalid brand ID or offer ID format' },
+    404: { description: 'No such brand, or offerId names no offer of this brand (OFFER_NOT_FOUND)' },
+    409: { description: 'The brand sells several offers and none was named (code SEVERAL_OFFERS)' },
     500: { description: 'Internal server error' },
   },
 });

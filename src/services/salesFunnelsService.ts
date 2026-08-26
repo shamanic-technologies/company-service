@@ -2,6 +2,7 @@ import { and, eq, notInArray } from 'drizzle-orm';
 import { db, brandSalesFunnels } from '../db';
 import {
   offerScope,
+  resolveNamedOffer,
   resolveOfferForWrite,
   resolveSoleOffer,
 } from './brandOffersService';
@@ -357,6 +358,32 @@ export class SalesFunnelsService {
    */
   async readActiveByBrandId(orgId: string, brandId: string): Promise<DeclaredSalesFunnelSet> {
     return this.readActiveByOfferId(orgId, brandId, await resolveSoleOffer(orgId, brandId));
+  }
+
+  /**
+   * The active-only read when the caller MAY name the offer.
+   *
+   * Naming one wins, once it is proved to exist under this (org, brand) — an
+   * offer of somebody else's brand, or an id that names nothing, is
+   * `OfferNotFoundError`, never a quiet fall back to the brand's own rows. A
+   * caller that names NONE keeps `readActiveByBrandId` exactly: the sole offer,
+   * the offer-less rows, or the deliberate `SeveralOffersError`.
+   *
+   * This is what lets a consumer price a lead with the economics of the OFFER it
+   * belongs to: each offer carries its own lifetime revenue and its own rates,
+   * so a brand-wide answer would be an average across everything the brand
+   * sells.
+   */
+  async readActiveByNamedOffer(
+    orgId: string,
+    brandId: string,
+    offerId?: string | null
+  ): Promise<DeclaredSalesFunnelSet> {
+    return this.readActiveByOfferId(
+      orgId,
+      brandId,
+      await resolveNamedOffer(orgId, brandId, offerId)
+    );
   }
 
   /** The active-only read, for ONE named offer. */

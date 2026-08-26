@@ -17,6 +17,7 @@ import {
 } from '../services/salesFunnelsService';
 import { ClickDestinationValidationError } from '../services/clickDestinationService';
 import { resolveInternalOrgScope, rejectInternalOrgScope } from '../lib/internal-org-scope';
+import { OfferNotFoundError } from '../services/brandOffersService';
 import { rejectOfferProblem } from '../lib/offer-scope';
 
 export const orgRouter = Router();
@@ -287,12 +288,26 @@ orgRouter.delete('/brands/:brandId/sales-funnels/:funnelKey', async (req: Reques
  * An unknown or unclaimed brand simply has nothing configured, and answers with
  * an empty set — the same contract the internal sales-economics read has always
  * had.
+ *
+ * `?offerId=` names WHICH offer's funnels the caller wants, and is what lets a
+ * consumer price a lead with the economics of the thing it is actually being
+ * sold: each offer carries its own lifetime revenue and its own rates, so a
+ * brand-wide answer would be an average across everything the brand sells.
+ * features-service holds the offer a lead belongs to and could not say so.
+ * Omitted keeps today's answer exactly, including the deliberate 409 for a
+ * brand that has stated several offers.
  */
 internalRouter.get('/brands/:brandId/sales-funnels', async (req: Request, res: Response) => {
   try {
     const { brandId } = req.params;
     if (!UUID_REGEX.test(brandId)) {
       return res.status(400).json({ error: 'Invalid brand ID format: must be a UUID' });
+    }
+
+    const rawOfferId = req.query.offerId;
+    const offerId = typeof rawOfferId === 'string' && rawOfferId.length > 0 ? rawOfferId : undefined;
+    if (offerId !== undefined && !UUID_REGEX.test(offerId)) {
+      return res.status(400).json({ error: 'Invalid offer ID format: must be a UUID' });
     }
 
     // An unknown or unclaimed brand simply has nothing configured. Unset is a
@@ -305,9 +320,18 @@ internalRouter.get('/brands/:brandId/sales-funnels', async (req: Request, res: R
     // rank a funnel the org switched off.
     let set;
     try {
-      set = scope.orgId
-        ? await salesFunnelsService.readActiveByBrandId(scope.orgId, brandId)
-        : { funnels: [] };
+      if (scope.orgId) {
+        set = await salesFunnelsService.readActiveByNamedOffer(scope.orgId, brandId, offerId);
+      } else if (offerId) {
+        // Nobody claims this brand, so no offer can be PROVED to belong to it.
+        // The unclaimed-brand contract is an empty set for a caller that named
+        // nothing; a caller that named an offer asked a question about a
+        // proposition we cannot attach to this brand, and swapping it for the
+        // brand's own rows is exactly the silent substitution this refuses.
+        throw new OfferNotFoundError(offerId);
+      } else {
+        set = { funnels: [] };
+      }
     } catch (error) {
       if (rejectOfferProblem(res, error)) return;
       throw error;
