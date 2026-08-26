@@ -2532,15 +2532,32 @@ registry.registerPath({
     'plausible set and do NOT derive one from the stored economics. ' +
     'The org is taken from `x-org-id`; without it, it is resolved when exactly ONE org claims the ' +
     'brand, and the read is rejected 400 `ORG_REQUIRED` when several do — each org configures the ' +
-    'brand independently, so there is no shared answer to guess at.',
-  request: { params: z.object({ brandId: z.string().uuid() }) },
+    'brand independently, so there is no shared answer to guess at. ' +
+    'WHICH offer the returned funnels belong to, and therefore which lifetime revenue and which ' +
+    'rates: a declared funnel hangs off an OFFER, because a brand selling a $200 self-serve plan ' +
+    'and a $20k contract converts and is worth completely different numbers on the same chain. ' +
+    'Name it with `?offerId=`; omit it for a brand selling one thing (unchanged behaviour).',
+  request: {
+    params: z.object({ brandId: z.string().uuid() }),
+    query: z.object({
+      offerId: z
+        .string()
+        .uuid()
+        .optional()
+        .openapi({
+          description:
+            "WHICH offer's declared funnels — and therefore whose lifetime revenue and conversion rates. features-service prices a lead through the offer its campaign sells; campaign-service holds that offer on the campaign. Omit for a brand selling one thing (unchanged behaviour); a brand holding SEVERAL offers answers 409 SEVERAL_OFFERS until one is named, rather than being served another proposition's economics.",
+        }),
+    }),
+  },
   responses: {
     200: {
       description: 'The declared funnels (possibly empty)',
       content: { 'application/json': { schema: GetSalesFunnelsResponseSchema } },
     },
-    400: { description: 'Invalid brand ID format' },
-    404: { description: 'No such brand' },
+    400: { description: 'Invalid brand ID or offer ID format' },
+    404: { description: 'No such brand, or offerId names no offer of this brand' },
+    409: { description: 'The brand sells several offers and none was named (code SEVERAL_OFFERS)' },
     500: { description: 'Internal server error' },
   },
 });

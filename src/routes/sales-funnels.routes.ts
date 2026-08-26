@@ -18,6 +18,7 @@ import {
 import { ClickDestinationValidationError } from '../services/clickDestinationService';
 import { resolveInternalOrgScope, rejectInternalOrgScope } from '../lib/internal-org-scope';
 import { rejectOfferProblem } from '../lib/offer-scope';
+import { resolveNamedOffer } from '../services/brandOffersService';
 
 export const orgRouter = Router();
 export const internalRouter = Router();
@@ -280,13 +281,27 @@ orgRouter.delete('/brands/:brandId/sales-funnels/:funnelKey', async (req: Reques
 });
 
 /**
- * GET /internal/brands/:brandId/sales-funnels
+ * GET /internal/brands/:brandId/sales-funnels[?offerId=]
  * Service-auth read of the funnels a brand AUTHORIZES, keyed by brandId with no
  * org context — what campaign-service arbitration ranks over.
  *
  * An unknown or unclaimed brand simply has nothing configured, and answers with
  * an empty set — the same contract the internal sales-economics read has always
  * had.
+ *
+ * WHICH offer's funnels, and therefore WHICH lifetime revenue and rates. A
+ * declared funnel hangs off an offer, because a brand selling a $200 self-serve
+ * plan and a $20k contract converts and is worth completely different numbers on
+ * the same chain — so the caller that knows which proposition it is pricing is
+ * the one that names it, `?offerId=`. features-service prices a lead through the
+ * offer its campaign sells; campaign-service holds that offer on the campaign.
+ *
+ * Omitted keeps today's answer byte-for-byte: the sole offer, an empty set for a
+ * brand with none, and the deliberate 409 SEVERAL_OFFERS for a brand selling
+ * several — which stays the right answer for a caller that names nothing, since
+ * serving one proposition's economics for another produces figures that read
+ * perfectly and are wrong throughout. An offer that is not this brand's is a 404,
+ * never a quiet fall back to the brand's own rows.
  */
 internalRouter.get('/brands/:brandId/sales-funnels', async (req: Request, res: Response) => {
   try {
@@ -298,6 +313,12 @@ internalRouter.get('/brands/:brandId/sales-funnels', async (req: Request, res: R
     // An unknown or unclaimed brand simply has nothing configured. Unset is a
     // 200 with an empty set here, never a 404 — the same contract the internal
     // sales-economics read has always had.
+    const rawOfferId = req.query.offerId;
+    const offerId = typeof rawOfferId === 'string' && rawOfferId.length > 0 ? rawOfferId : undefined;
+    if (offerId !== undefined && !UUID_REGEX.test(offerId)) {
+      return res.status(400).json({ error: 'Invalid offer ID format: must be a UUID' });
+    }
+
     const scope = await resolveInternalOrgScope(req, brandId);
     if (rejectInternalOrgScope(res, scope)) return;
 
@@ -306,7 +327,11 @@ internalRouter.get('/brands/:brandId/sales-funnels', async (req: Request, res: R
     let set;
     try {
       set = scope.orgId
-        ? await salesFunnelsService.readActiveByBrandId(scope.orgId, brandId)
+        ? await salesFunnelsService.readActiveByOfferId(
+            scope.orgId,
+            brandId,
+            await resolveNamedOffer(scope.orgId, brandId, offerId)
+          )
         : { funnels: [] };
     } catch (error) {
       if (rejectOfferProblem(res, error)) return;
