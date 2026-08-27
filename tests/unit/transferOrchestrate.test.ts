@@ -12,36 +12,36 @@ const { mockSelect, mockReturning, mockInsertReturning, mockDeleteReturning } = 
 }));
 
 vi.mock('../../src/db', () => {
-  const selectChain: Record<string, any> = {};
+  const selectFunnel: Record<string, any> = {};
   for (const method of ['from', 'where', 'innerJoin', 'limit', 'orderBy']) {
-    selectChain[method] = vi.fn().mockReturnValue(selectChain);
+    selectFunnel[method] = vi.fn().mockReturnValue(selectFunnel);
   }
-  selectChain.then = (resolve: (v: unknown) => void) => Promise.resolve(mockSelect()).then(resolve);
+  selectFunnel.then = (resolve: (v: unknown) => void) => Promise.resolve(mockSelect()).then(resolve);
 
-  const updateChain: Record<string, any> = {};
+  const updateFunnel: Record<string, any> = {};
   for (const method of ['set', 'where']) {
-    updateChain[method] = vi.fn().mockReturnValue(updateChain);
+    updateFunnel[method] = vi.fn().mockReturnValue(updateFunnel);
   }
-  updateChain.returning = mockReturning;
+  updateFunnel.returning = mockReturning;
 
-  const insertChain: Record<string, any> = {};
+  const insertFunnel: Record<string, any> = {};
   for (const method of ['values']) {
-    insertChain[method] = vi.fn().mockReturnValue(insertChain);
+    insertFunnel[method] = vi.fn().mockReturnValue(insertFunnel);
   }
-  insertChain.returning = mockInsertReturning;
+  insertFunnel.returning = mockInsertReturning;
 
-  const deleteChain: Record<string, any> = {};
+  const deleteFunnel: Record<string, any> = {};
   for (const method of ['where']) {
-    deleteChain[method] = vi.fn().mockReturnValue(deleteChain);
+    deleteFunnel[method] = vi.fn().mockReturnValue(deleteFunnel);
   }
-  deleteChain.returning = mockDeleteReturning;
+  deleteFunnel.returning = mockDeleteReturning;
 
   return {
     db: {
-      select: vi.fn().mockReturnValue(selectChain),
-      update: vi.fn().mockReturnValue(updateChain),
-      insert: vi.fn().mockReturnValue(insertChain),
-      delete: vi.fn().mockReturnValue(deleteChain),
+      select: vi.fn().mockReturnValue(selectFunnel),
+      update: vi.fn().mockReturnValue(updateFunnel),
+      insert: vi.fn().mockReturnValue(insertFunnel),
+      delete: vi.fn().mockReturnValue(deleteFunnel),
     },
     brands: {
       id: 'brands.id',

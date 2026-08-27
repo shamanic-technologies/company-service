@@ -103,7 +103,7 @@ describe('what the backfill refuses to write', () => {
 
   it('skips a website-led funnel for a brand with no website, keeping the half that runs', () => {
     // A `combinedSales` brand with no site cannot run the website-purchase
-    // chain — but it can still run the conversation one, and substituting a
+    // funnel — but it can still run the conversation one, and substituting a
     // different funnel for the half it loses would put words in its mouth.
     const plan = planBackfill([
       candidate({ currentGoal: 'combinedSales', hasDomain: false }),

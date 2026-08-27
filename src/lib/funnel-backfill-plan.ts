@@ -39,7 +39,7 @@ export interface PlannedDeclaration {
 
 /** Why a candidate produced no declaration. Counted and printed, never silent. */
 export type BackfillSkipReason =
-  /** `whatsappConversation` — the catalogue has no chain it could mean. */
+  /** `whatsappConversation` — the catalogue has no funnel it could mean. */
   | 'goal_names_no_funnel'
   /** A stored word that names no goal at all. Never guessed at. */
   | 'unrecognised_goal'

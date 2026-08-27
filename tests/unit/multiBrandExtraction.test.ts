@@ -102,34 +102,34 @@ const mockedChat = vi.mocked(chat);
 
 const orgCaller = { mode: 'org' as const, orgId: 'org-1', userId: 'user-1', runId: 'run-1' };
 
-// Helper to set up DB mock chain for consolidated cache
+// Helper to set up DB mock funnel for consolidated cache
 function mockDbCacheHit(values: Record<string, unknown>) {
-  const chain = {
+  const funnel = {
     select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([{ fieldValues: values }]),
   };
-  mockSelect.mockReturnValue(chain);
-  return chain;
+  mockSelect.mockReturnValue(funnel);
+  return funnel;
 }
 
 function mockDbCacheMiss() {
-  const selectChain = {
+  const selectFunnel = {
     select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([]),
   };
-  mockSelect.mockReturnValue(selectChain);
+  mockSelect.mockReturnValue(selectFunnel);
 
-  const insertChain = {
+  const insertFunnel = {
     values: vi.fn().mockReturnThis(),
     onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
   };
-  mockInsert.mockReturnValue(insertChain);
+  mockInsert.mockReturnValue(insertFunnel);
 
-  return { selectChain, insertChain };
+  return { selectFunnel, insertFunnel };
 }
 
 describe('multiBrandExtractFields', () => {

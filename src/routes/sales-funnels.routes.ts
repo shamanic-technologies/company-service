@@ -9,7 +9,7 @@ import { getBrand } from '../services/brandService';
 import { SALES_FUNNEL_KEYS, toSalesFunnelKey, SalesFunnelKey } from '../services/salesFunnelCatalogue';
 import {
   SalesFunnelDestinationNotUsedError,
-  SalesFunnelRateNotInChainError,
+  SalesFunnelRateNotInFunnelError,
   SalesFunnelRequiresWebsiteError,
   LastActiveSalesFunnelError,
   RetiredGoalNamesNoFunnelError,
@@ -83,7 +83,7 @@ function rejectDeclaration(res: Response, error: unknown): boolean {
   // answer — 409, naming the offer routes, rather than a guess.
   if (rejectOfferProblem(res, error)) return true;
   if (
-    error instanceof SalesFunnelRateNotInChainError ||
+    error instanceof SalesFunnelRateNotInFunnelError ||
     error instanceof SalesFunnelDestinationNotUsedError ||
     error instanceof SalesFunnelRequiresWebsiteError ||
     error instanceof LastActiveSalesFunnelError ||
@@ -292,7 +292,7 @@ orgRouter.delete('/brands/:brandId/sales-funnels/:funnelKey', async (req: Reques
  * WHICH offer's funnels, and therefore WHICH lifetime revenue and rates. A
  * declared funnel hangs off an offer, because a brand selling a $200 self-serve
  * plan and a $20k contract converts and is worth completely different numbers on
- * the same chain — so the caller that knows which proposition it is pricing is
+ * the same funnel — so the caller that knows which proposition it is pricing is
  * the one that names it, `?offerId=`. features-service prices a lead through the
  * offer its campaign sells; campaign-service holds that offer on the campaign.
  *

@@ -2213,7 +2213,7 @@ registry.registerPath({
 // ── Sales funnels (the set a brand declares + each one's own economics) ──────
 // The funnels a brand sells through. A brand declares a SET, and each declared
 // funnel owns its own conversion rates, its own lifetime revenue, its own
-// landing page and — when its chain contains a meeting — its own booking link.
+// landing page and — when its funnel contains a meeting — its own booking link.
 // Nothing here has a server default: an absent value reads back `null`, which
 // means the brand never declared it and never means zero.
 
@@ -2243,7 +2243,7 @@ export const AcceptedSalesFunnelKeySchema = z
   .openapi('AcceptedSalesFunnelKey');
 
 // Every rate a funnel can price. A write may only carry the rates of the
-// funnel's OWN chain — the route rejects a foreign rate 400 rather than
+// funnel's OWN funnel — the route rejects a foreign rate 400 rather than
 // dropping it (a silently-ignored write reads back as "never declared").
 // `null` clears a rate; omitting it leaves the stored value unchanged.
 export const SalesFunnelRatesSchema = z
@@ -2258,7 +2258,7 @@ export const SalesFunnelRatesSchema = z
     signupToPaidClientPct: PercentSchema.nullable(),
     visitToFormSubmissionPct: PercentSchema.nullable(),
     formSubmissionToPaidClientPct: PercentSchema.nullable(),
-    // The legs of the chains that start neither in a conversation leading to a
+    // The legs of the funnels that start neither in a conversation leading to a
     // meeting nor on the brand's own site. Stored ONLY on a funnel — the
     // brand-wide economics record predates them and has no column for any of
     // them, so they are stated here or not at all.
@@ -2286,18 +2286,18 @@ export const DeclareSalesFunnelRequestSchema = z
   .openapi('DeclareSalesFunnelRequest');
 
 // READ shape of one declared funnel. `rates` carries exactly the legs of THIS
-// funnel's chain — a leg the brand has not given us is `null`, and a rate the
+// funnel's funnel — a leg the brand has not given us is `null`, and a rate the
 // funnel does not price is absent entirely (it is not this funnel's business).
 export const DeclaredSalesFunnelSchema = z
   .object({
     funnelKey: SalesFunnelKeySchema,
-    // Whether the org currently sells through this chain. An INACTIVE funnel
+    // Whether the org currently sells through this funnel. An INACTIVE funnel
     // keeps every number on it, so switching it back on returns what the user
     // entered — which is why it is still listed on the org read.
     active: z.boolean(),
     name: z.string(),
     steps: z.array(z.string()),
-    // The event that STARTS this chain, and the token a consumer matches an
+    // The event that STARTS this funnel, and the token a consumer matches an
     // acquisition channel against: a channel that can only produce a phone
     // conversation cannot feed a funnel that starts at a `website_visit`, and a
     // channel that never touches the brand's site cannot feed one that does.
@@ -2357,10 +2357,10 @@ export const DeclareSalesFunnelResponseSchema = z
   .openapi('DeclareSalesFunnelResponse');
 
 const SALES_FUNNELS_MODEL_DESCRIPTION =
-  'A funnel is one chain from the event that STARTS it down to the SALE, and it owns everything ' +
-  'that chain needs priced: the conversion rate of each of its steps, the lifetime revenue of a ' +
+  'A funnel is one funnel from the event that STARTS it down to the SALE, and it owns everything ' +
+  'that funnel needs priced: the conversion rate of each of its steps, the lifetime revenue of a ' +
   'client won through it, the page an outreach click lands on and, when a meeting sits in the ' +
-  'chain, a booking link. The catalogue is ' +
+  'funnel, a booking link. The catalogue is ' +
   '`sales_meetings_from_conversation` (Positive reply -> Meeting booked -> Meeting attended -> ' +
   'Paid client), `sales_meetings_from_website` (Website visit -> Meeting booked -> Meeting ' +
   'attended -> Paid client), `website_purchases` (Website visit -> Signup -> Paid client), ' +
@@ -2450,9 +2450,9 @@ registry.registerPath({
     'Idempotent: the declaration IS the row, so declaring twice is declaring once, and a body with ' +
     'no fields declares the funnel without pricing it yet. PARTIAL: an omitted field is left exactly ' +
     'as stored, an explicit `null` CLEARS the value back to never-declared. `rates` may only carry ' +
-    "the legs of THIS funnel's own chain — a foreign rate is rejected 400 rather than dropped. " +
+    "the legs of THIS funnel's own funnel — a foreign rate is rejected 400 rather than dropped. " +
     '`destinationUrl` is accepted only for a funnel that lands a click on the site and must be on the ' +
-    "brand's own domain (or a subdomain); `bookingUrl` only for a funnel whose chain contains a " +
+    "brand's own domain (or a subdomain); `bookingUrl` only for a funnel whose funnel contains a " +
     'meeting, and it may point at any third-party scheduler. A funnel that starts with a website ' +
     'visit cannot be declared for a brand that has no website (400).',
   request: {
@@ -2466,7 +2466,7 @@ registry.registerPath({
     },
     400: {
       description:
-        'Invalid brand ID or funnel key, a rate outside this funnel\'s chain, a destination the ' +
+        'Invalid brand ID or funnel key, a rate outside this funnel\'s funnel, a destination the ' +
         'funnel has no use for, an off-domain page destination, or a website-led funnel on a brand ' +
         'with no website',
     },
@@ -2535,7 +2535,7 @@ registry.registerPath({
     'brand independently, so there is no shared answer to guess at. ' +
     'WHICH offer the returned funnels belong to, and therefore which lifetime revenue and which ' +
     'rates: a declared funnel hangs off an OFFER, because a brand selling a $200 self-serve plan ' +
-    'and a $20k contract converts and is worth completely different numbers on the same chain. ' +
+    'and a $20k contract converts and is worth completely different numbers on the same funnel. ' +
     'Name it with `?offerId=`; omit it for a brand selling one thing (unchanged behaviour).',
   request: {
     params: z.object({ brandId: z.string().uuid() }),
@@ -3380,7 +3380,7 @@ registry.registerPath({
   },
   responses: {
     200: { description: 'The declared funnel', content: { 'application/json': { schema: DeclareSalesFunnelResponseSchema } } },
-    400: { description: "Invalid ID or funnel key, a rate outside this funnel's chain, a destination the funnel has no use for, an off-domain page destination, or a website-led funnel on a brand with no website" },
+    400: { description: "Invalid ID or funnel key, a rate outside this funnel's funnel, a destination the funnel has no use for, an off-domain page destination, or a website-led funnel on a brand with no website" },
     403: { description: "Brand does not belong to the caller's org" },
     404: { description: 'No such brand, or no such offer on it' },
     500: { description: 'Internal server error' },

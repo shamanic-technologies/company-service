@@ -12,7 +12,7 @@ import { db, brands, orgBrands, brandOffers, brandSalesFunnels } from '../../src
  * A declared funnel hangs off an OFFER and carries that offer's own lifetime
  * revenue and its own rates: a brand selling a $200 self-serve plan and a $20k
  * contract converts and is worth completely different numbers on the same
- * chain. The service-auth read served the brand's SOLE offer, so a brand that
+ * funnel. The service-auth read served the brand's SOLE offer, so a brand that
  * states a second could not be answered at all — and features-service, which
  * prices a lead through the offer its campaign sells, had no way to say which.
  *
@@ -75,7 +75,7 @@ describe('internal sales-funnels read names an offer', () => {
     starterOfferId = await createOffer(twoOfferBrandId, 'Starter Plan');
     enterpriseOfferId = await createOffer(twoOfferBrandId, 'Enterprise');
 
-    // Each proposition prices its OWN chain — that difference is the only thing
+    // Each proposition prices its OWN funnel — that difference is the only thing
     // that makes a wrong pick observable.
     await declare(soleOfferBrandId, soleOfferId, 4200, 25);
     await declare(twoOfferBrandId, starterOfferId, 200, 10);

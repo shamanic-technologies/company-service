@@ -1,10 +1,10 @@
 /**
  * The catalogue of sales funnels a brand can sell through.
  *
- * A funnel is ONE chain, from the event that STARTS it down to the SALE. It owns
- * everything that chain needs priced: the conversion rate of each of its steps,
+ * A funnel is ONE funnel, from the event that STARTS it down to the SALE. It owns
+ * everything that funnel needs priced: the conversion rate of each of its steps,
  * the lifetime revenue of a client won through it, the page an outreach click
- * lands on and, when a meeting sits in the chain, a booking link.
+ * lands on and, when a meeting sits in the funnel, a booking link.
  *
  * VOCABULARY (owner-fixed): the terminal outcome of every funnel is a SALE —
  * it is what the customer buys. Each intermediate stage is a STEP. The step a
@@ -13,7 +13,7 @@
  *
  * brand-service OWNS this catalogue because it owns what a brand declares. The
  * dashboard renders the same funnels (`apps/dashboard/src/lib/sales-funnels.ts`
- * in `shamanic-technologies/distribute.you`) — the keys, the chains and the steps
+ * in `shamanic-technologies/distribute.you`) — the keys, the funnels and the steps
  * are byte-equal with it on purpose, so the screen and the store describe one
  * model rather than two that drift.
  *
@@ -119,7 +119,7 @@ export const SALES_FUNNEL_RATE_KEYS = [
   'signupToPaidClientPct',
   'visitToFormSubmissionPct',
   'formSubmissionToPaidClientPct',
-  // The chains that begin somewhere other than a conversation-with-a-meeting or
+  // The funnels that begin somewhere other than a conversation-with-a-meeting or
   // the brand's own website. None of these has a counterpart on the brand-wide
   // `brand_sales_economics` record — that record predates them — so they are
   // stated on the funnel or not at all.
@@ -136,39 +136,39 @@ export interface SalesFunnelDef {
   /** What the funnel is called. */
   name: string;
   /**
-   * The event that STARTS this chain. `steps[0]` is that event as a label; this
+   * The event that STARTS this funnel. `steps[0]` is that event as a label; this
    * is the token a consumer matches a channel against.
    */
   startEvent: SalesFunnelStartEvent;
-  /** The chain. `legs[i]` is the rate between `steps[i]` and `steps[i + 1]`. */
+  /** The funnel. `legs[i]` is the rate between `steps[i]` and `steps[i + 1]`. */
   steps: string[];
-  /** The rate each leg of the chain converts at, in chain order. */
+  /** The rate each leg of the funnel converts at, in funnel order. */
   legs: SalesFunnelRateKey[];
   /**
    * The step this funnel is NAMED after — its MILESTONE. The moment that tells a
-   * brand the funnel is working, which for most chains lands before any sale has
+   * brand the funnel is working, which for most funnels lands before any sale has
    * happened. It is what a channel's minimum budget is priced against: one month
    * must pay for at least one of these. MUST be one of `steps`; the assertion at
    * the bottom of this file refuses a catalogue where it is not.
    *
-   * A chain whose only stage IS the sale (`sales_from_conversation`) names the
+   * A funnel whose only stage IS the sale (`sales_from_conversation`) names the
    * sale, because that is genuinely the moment it is named after — not a
-   * fallback, and never a step borrowed from another chain.
+   * fallback, and never a step borrowed from another funnel.
    */
   milestoneStep: string;
   /** The first step is a click onto the brand's site, so a domain is required. */
   requiresWebsite: boolean;
   /** This funnel lands an outreach click on a page of the brand's own site. */
   pageDestination: boolean;
-  /** A meeting sits in the chain, so a booking link is worth collecting. */
+  /** A meeting sits in the funnel, so a booking link is worth collecting. */
   bookingLink: boolean;
 }
 
 /**
- * The terminal step of every chain is the SALE. Its LABEL is `Paid client` for
- * every funnel, old and new: the four original chains have carried that label
+ * The terminal step of every funnel is the SALE. Its LABEL is `Paid client` for
+ * every funnel, old and new: the four original funnels have carried that label
  * since before the sale/step/milestone vocabulary was fixed, live consumers
- * render it, and a new chain spelling the same stage differently would describe
+ * render it, and a new funnel spelling the same stage differently would describe
  * one model as two.
  */
 export const SALES_FUNNELS: SalesFunnelDef[] = [
@@ -220,7 +220,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
     // The sale closes INSIDE the conversation — no meeting is ever booked. The
     // common shape under roughly two thousand dollars (agencies, freelancers,
     // wholesale) and the default in markets where business runs on WhatsApp.
-    // Its milestone IS the sale, because the chain has no stage before it; that
+    // Its milestone IS the sale, because the funnel has no stage before it; that
     // is the moment the funnel is named after, not a stand-in for a missing one.
     key: 'sales_from_conversation',
     name: 'Sale from Conversation',
@@ -235,7 +235,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     // A meeting booked DIRECTLY from an ad — Meta "Book Now", Google Local
     // Services — without the buyer ever visiting the brand's site. It shares the
-    // show-up and close legs with the other meeting chains, because once a
+    // show-up and close legs with the other meeting funnels, because once a
     // meeting is booked the rest of the journey is the same; only its first leg
     // is its own.
     key: 'sales_meetings_from_ads',
@@ -251,7 +251,7 @@ export const SALES_FUNNELS: SalesFunnelDef[] = [
   {
     // A form hosted BY THE ADVERTISING PLATFORM — Meta Lead Ads, LinkedIn Lead
     // Gen Forms, TikTok lead forms — which the buyer fills without ever touching
-    // the brand's site. Deliberately GENERAL: the same chain prices a webinar
+    // the brand's site. Deliberately GENERAL: the same funnel prices a webinar
     // signup, a guide download, a quote request and a demo request, so naming it
     // after any one of them would exclude the others.
     key: 'lead_forms_from_ads',
@@ -296,7 +296,7 @@ export function salesFunnelByKey(key: SalesFunnelKey): SalesFunnelDef {
   return def;
 }
 
-/** The rates this funnel prices, in chain order, deduped across repeated legs. */
+/** The rates this funnel prices, in funnel order, deduped across repeated legs. */
 export function funnelRateKeys(def: SalesFunnelDef): SalesFunnelRateKey[] {
   const seen = new Set<SalesFunnelRateKey>();
   const out: SalesFunnelRateKey[] = [];
@@ -308,15 +308,15 @@ export function funnelRateKeys(def: SalesFunnelDef): SalesFunnelRateKey[] {
   return out;
 }
 
-/** True when this funnel's chain converts at `rate`. */
+/** True when this funnel's funnel converts at `rate`. */
 export function funnelPricesRate(def: SalesFunnelDef, rate: SalesFunnelRateKey): boolean {
   return def.legs.includes(rate);
 }
 
 /**
- * Where the MILESTONE sits in the chain. Throws when the funnel names a step it
+ * Where the MILESTONE sits in the funnel. Throws when the funnel names a step it
  * does not have — a consumer pricing a channel's minimum budget against a step
- * that is not in the chain would be pricing nothing, so this fails loud rather
+ * that is not in the funnel would be pricing nothing, so this fails loud rather
  * than answering 0 (which is a real position: the starting event).
  */
 export function funnelMilestoneStepIndex(def: SalesFunnelDef): number {
@@ -344,7 +344,7 @@ for (const def of SALES_FUNNELS) {
     throw new Error(`Sales funnel "${def.key}" declares an unknown start event: ${def.startEvent}`);
   }
   if (def.steps.length < 2) {
-    throw new Error(`Sales funnel "${def.key}" has no chain: a funnel runs from its start event to the sale.`);
+    throw new Error(`Sales funnel "${def.key}" has no funnel: a funnel runs from its start event to the sale.`);
   }
   if (def.legs.length !== def.steps.length - 1) {
     throw new Error(

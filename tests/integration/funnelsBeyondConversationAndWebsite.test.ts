@@ -97,7 +97,7 @@ describe('Funnels that start neither in a conversation-with-a-meeting nor on the
     expect(res.body.funnel.rates.adClickToMeetingPct).toBe(4);
   });
 
-  it('rejects a rate from another chain rather than storing it where nothing reads it', async () => {
+  it('rejects a rate from another funnel rather than storing it where nothing reads it', async () => {
     const res = await request(app)
       .put(one(brandId, 'lead_forms_from_ads'))
       .set(getAuthHeaders(orgId))
@@ -133,7 +133,7 @@ describe('Funnels that start neither in a conversation-with-a-meeting nor on the
     expect(byKey.sales_meetings_from_ads.startEvent).toBe('ad_click');
     expect(byKey.sales_meetings_from_ads.milestoneStep).toBe('Meeting booked');
 
-    // The milestone is always a step of the funnel's OWN chain, so a consumer
+    // The milestone is always a step of the funnel's OWN funnel, so a consumer
     // reads it rather than carrying a funnel-to-step mapping of its own.
     for (const funnel of res.body.funnels) {
       expect(funnel.steps[funnel.milestoneStepIndex]).toBe(funnel.milestoneStep);
@@ -155,7 +155,7 @@ describe('Funnels that start neither in a conversation-with-a-meeting nor on the
   });
 
   it('leaves the funnels a brand already declared exactly as they were', async () => {
-    // The original four are untouched by this ship: same keys, same chains, same
+    // The original four are untouched by this ship: same keys, same funnels, same
     // milestones, and a brand that declared one before it keeps reading it back.
     const put = await request(app)
       .put(one(brandId, 'website_purchases'))

@@ -81,11 +81,11 @@ describe('buildUserFieldsView', () => {
 describe('upsertUserFields', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    const chain = {
+    const funnel = {
       values: vi.fn().mockReturnThis(),
       onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
     };
-    mockInsert.mockReturnValue(chain);
+    mockInsert.mockReturnValue(funnel);
   });
 
   it('throws UnknownUserFieldKeyError and writes NOTHING on an unknown key', async () => {

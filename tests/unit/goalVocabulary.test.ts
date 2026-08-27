@@ -116,7 +116,7 @@ describe('what a retired goal MEANT, as funnels', () => {
   });
 
   it('tells the two meeting funnels apart, which the goal alone could not', () => {
-    // The whole reason the goal is retired: one word, two chains. A brand that
+    // The whole reason the goal is retired: one word, two funnels. A brand that
     // set a click destination is sending outreach onto its own site, so its
     // meetings come from the website.
     expect(funnelKeysForRetiredGoal('meetingBooked', withClickDestination)).toEqual([
@@ -152,9 +152,9 @@ describe('what a retired goal MEANT, as funnels', () => {
     ]);
   });
 
-  it('answers NOTHING for whatsappConversation, which names no chain', () => {
+  it('answers NOTHING for whatsappConversation, which names no funnel', () => {
     // Not a substitute funnel and not the click funnel: the catalogue has no
-    // whatsapp chain, so the empty list is the honest answer and the caller
+    // whatsapp funnel, so the empty list is the honest answer and the caller
     // fails loud on it.
     expect(funnelKeysForRetiredGoal('whatsappConversation', withClickDestination)).toEqual([]);
     expect(funnelKeysForRetiredGoal('whatsappConversation', withoutClickDestination)).toEqual([]);

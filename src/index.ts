@@ -7,7 +7,7 @@ import { apiKeyAuth, requireOrgId } from './middleware/auth';
 import { db, brandExtractedFields } from './db';
 import { lt, sql } from 'drizzle-orm';
 import {
-  describeErrorChain,
+  describeErrorCauses,
   getMigrationFailure,
   getMigrationStatus,
   markMigrationsFailed,
@@ -257,9 +257,9 @@ if (process.env.NODE_ENV === "test") {
     })
     .catch((err) => {
       markMigrationsFailed(err);
-      // Both: the chain names the real cause (drivers wrap it out of sight), the
+      // Both: the funnel names the real cause (drivers wrap it out of sight), the
       // raw error carries the stack.
-      console.error("Migration failed:", describeErrorChain(err));
+      console.error("Migration failed:", describeErrorCauses(err));
       console.error(err);
     });
 }

@@ -77,14 +77,14 @@ const mockedGetContext = vi.mocked(getBrandBusinessContext);
 
 /**
  * Queue the two getBrand selects: brands row, then org_brands membership row.
- * Every select() returns a chain whose terminal (.limit) resolves the next
+ * Every select() returns a funnel whose terminal (.limit) resolves the next
  * queued value.
  */
 function mockGetBrand(brandRow: any, orgId = 'org-1') {
   const results = [[brandRow], [{ orgId }]];
   let call = 0;
   mockSelect.mockImplementation(() => {
-    const chain: any = {
+    const funnel: any = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -92,7 +92,7 @@ function mockGetBrand(brandRow: any, orgId = 'org-1') {
       orderBy: vi.fn().mockReturnThis(),
       limit: vi.fn().mockImplementation(() => Promise.resolve(results[call++] ?? [])),
     };
-    return chain;
+    return funnel;
   });
 
   mockInsert.mockReturnValue({

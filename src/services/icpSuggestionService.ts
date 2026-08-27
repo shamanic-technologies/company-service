@@ -357,7 +357,7 @@ export async function suggestIcp(opts: SuggestIcpOptions): Promise<string> {
         // complementary segment on follow-up calls.
         temperature: 0.1,
         maxTokens: 512,
-        // Short one-line JSON ICP — no chain-of-thought needed. Minimizes
+        // Short one-line JSON ICP — no funnel-of-thought needed. Minimizes
         // Gemini's internal reasoning (flash-pro → `minimal`) for a faster reply.
         disableThinking: true,
       },

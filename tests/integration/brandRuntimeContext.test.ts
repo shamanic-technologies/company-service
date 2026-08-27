@@ -187,7 +187,7 @@ describe('Brand runtime context and current goal', () => {
   });
 
   it('rejects a goal that names no funnel rather than declaring nothing', async () => {
-    // `whatsappConversation` is the one retired goal the catalogue has no chain
+    // `whatsappConversation` is the one retired goal the catalogue has no funnel
     // for. A 200 would tell the caller the brand now sells through something.
     const update = await request(app)
       .put(currentGoalPath(runtimeBrandId))

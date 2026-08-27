@@ -37,7 +37,7 @@ export interface OfferMigrationCandidate {
   /** The brand's own identity, for the naming prompt. Both are nullable. */
   brandName: string | null;
   brandDomain: string | null;
-  /** The chains this brand sells through, canonical keys, in stored order. */
+  /** The funnels this brand sells through, canonical keys, in stored order. */
   funnelKeys: string[];
   /**
    * The confirmed value proposition, key → value as stored. This is the richest

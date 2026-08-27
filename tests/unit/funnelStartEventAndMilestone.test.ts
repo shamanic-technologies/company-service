@@ -32,7 +32,7 @@ describe('every funnel states the event that starts it', () => {
     }
   });
 
-  it('agrees with the first step of its own chain', () => {
+  it('agrees with the first step of its own funnel', () => {
     const labelForEvent: Record<string, string> = {
       conversation_reply: 'Positive reply',
       website_visit: 'Website visit',
@@ -69,7 +69,7 @@ describe('every funnel states the event that starts it', () => {
 });
 
 describe('every funnel states the step it is named after', () => {
-  it('names a step of its OWN chain, so a consumer can read it instead of hardcoding one', () => {
+  it('names a step of its OWN funnel, so a consumer can read it instead of hardcoding one', () => {
     for (const def of SALES_FUNNELS) {
       expect(def.steps).toContain(def.milestoneStep);
       expect(def.steps[funnelMilestoneStepIndex(def)]).toBe(def.milestoneStep);
@@ -83,16 +83,16 @@ describe('every funnel states the step it is named after', () => {
     expect(salesFunnelByKey('form_magnet').milestoneStep).toBe('Form filled');
   });
 
-  it('names the new chains after the moment that tells the brand they are working', () => {
+  it('names the new funnels after the moment that tells the brand they are working', () => {
     expect(salesFunnelByKey('sales_meetings_from_ads').milestoneStep).toBe('Meeting booked');
     expect(salesFunnelByKey('lead_forms_from_ads').milestoneStep).toBe('Lead form submitted');
-    // The one chain with no stage before the sale names the SALE, because that
+    // The one funnel with no stage before the sale names the SALE, because that
     // genuinely is what it is named after — not a stand-in for a missing step.
     expect(salesFunnelByKey('sales_from_conversation').milestoneStep).toBe('Paid client');
   });
 
   it('refuses a funnel whose milestone is not one of its steps rather than answering 0', () => {
-    // 0 is a real position in the chain — the starting event — so a funnel that
+    // 0 is a real position in the funnel — the starting event — so a funnel that
     // cannot resolve its milestone must fail loud, never be read as "the start".
     const broken = {
       key: 'lead_forms_from_ads',
@@ -110,8 +110,8 @@ describe('every funnel states the step it is named after', () => {
   });
 });
 
-describe('the new chains price their own legs, and only their own', () => {
-  it('gives the sale-in-the-conversation chain its single leg', () => {
+describe('the new funnels price their own legs, and only their own', () => {
+  it('gives the sale-in-the-conversation funnel its single leg', () => {
     const def = salesFunnelByKey('sales_from_conversation');
     expect(def.steps).toEqual(['Positive reply', 'Paid client']);
     expect(def.legs).toEqual(['replyToPaidClientPct']);
@@ -121,7 +121,7 @@ describe('the new chains price their own legs, and only their own', () => {
     expect(def.pageDestination).toBe(false);
   });
 
-  it('gives the ad-booked meeting its own first leg and shares the rest of the meeting chain', () => {
+  it('gives the ad-booked meeting its own first leg and shares the rest of the meeting funnel', () => {
     const def = salesFunnelByKey('sales_meetings_from_ads');
     expect(def.legs).toEqual([
       'adClickToMeetingPct',
@@ -153,7 +153,7 @@ describe('a declared funnel reads back its start event and its milestone', () =>
     updatedAt: '2026-08-19T00:00:00.000Z',
   } as never;
 
-  it('answers both questions on the wire, beside the chain itself', () => {
+  it('answers both questions on the wire, beside the funnel itself', () => {
     const funnel = formatDeclaredFunnel(row);
     expect(funnel.startEvent).toBe('ad_click');
     expect(funnel.milestoneStep).toBe('Lead form submitted');
@@ -161,7 +161,7 @@ describe('a declared funnel reads back its start event and its milestone', () =>
     expect(funnel.steps[funnel.milestoneStepIndex]).toBe(funnel.milestoneStep);
   });
 
-  it('still projects only the legs this chain prices, absent reading null', () => {
+  it('still projects only the legs this funnel prices, absent reading null', () => {
     const funnel = formatDeclaredFunnel(row);
     expect(Object.keys(funnel.rates)).toEqual([
       'adClickToLeadFormPct',
