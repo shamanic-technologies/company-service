@@ -621,7 +621,7 @@ describe('Sales Economics Endpoints', () => {
   });
 
   // `whatsappConversation` is the one retired goal that names no funnel — the
-  // catalogue has no whatsapp chain. It is refused rather than accepted into
+  // catalogue has no whatsapp funnel. It is refused rather than accepted into
   // silence, and the refusal must leave the metrics EXACTLY as they were: a
   // write that half-applies and then fails is worse than either outcome alone.
   it('PUT optimizationGoal "whatsapp_conversations" → 400, and nothing is written', async () => {

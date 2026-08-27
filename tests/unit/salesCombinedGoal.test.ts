@@ -13,7 +13,7 @@ import { funnelKeysForRetiredGoal, toRetiredGoal } from '../../src/lib/goal-voca
  *
  * Now that the goal is retired, the two words resolve to FUNNELS, and that is
  * where the distinction has to survive: `sales` declares the website-purchase
- * chain, and the combined goal declares TWO chains rather than picking one.
+ * funnel, and the combined goal declares TWO funnels rather than picking one.
  */
 describe('the combined goal and website purchase never collide', () => {
   const context = { hasClickDestination: false };
@@ -27,7 +27,7 @@ describe('the combined goal and website purchase never collide', () => {
     }
   });
 
-  it('turns the combined goal into BOTH chains, losing neither half', () => {
+  it('turns the combined goal into BOTH funnels, losing neither half', () => {
     for (const wire of ['combined_sales', 'combinedSales'] as const) {
       expect(toRetiredGoal(wire)).toBe('combinedSales');
       expect(funnelKeysForRetiredGoal(toRetiredGoal(wire), context)).toEqual([

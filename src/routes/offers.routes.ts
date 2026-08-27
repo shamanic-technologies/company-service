@@ -19,7 +19,7 @@ import {
 import { toSalesFunnelKey, SALES_FUNNEL_KEYS, SalesFunnelKey } from '../services/salesFunnelCatalogue';
 import {
   SalesFunnelDestinationNotUsedError,
-  SalesFunnelRateNotInChainError,
+  SalesFunnelRateNotInFunnelError,
   SalesFunnelRequiresWebsiteError,
   LastActiveSalesFunnelError,
   RetiredGoalNamesNoFunnelError,
@@ -98,7 +98,7 @@ function parseFunnelKey(req: Request, res: Response): SalesFunnelKey | null {
 function rejectDeclaration(res: Response, error: unknown): boolean {
   if (rejectOfferProblem(res, error)) return true;
   if (
-    error instanceof SalesFunnelRateNotInChainError ||
+    error instanceof SalesFunnelRateNotInFunnelError ||
     error instanceof SalesFunnelDestinationNotUsedError ||
     error instanceof SalesFunnelRequiresWebsiteError ||
     error instanceof LastActiveSalesFunnelError ||

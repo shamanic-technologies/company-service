@@ -25,7 +25,7 @@
  * holds the PUBLISHABLE token (`pk_...`) used to build img.logo.dev URLs — it
  * does NOT authenticate this endpoint.
  *
- * This is one link of an explicit priority chain (index -> page HTML ->
+ * This is one link of an explicit priority funnel (index -> page HTML ->
  * titlecased domain) with a guaranteed terminal fallback, so EVERY failure mode
  * — key absent, network error, non-2xx, unparseable body, no domain match —
  * logs loudly and returns null so the next link runs. That is a documented
@@ -60,7 +60,7 @@ function domainLabel(domain: string): string {
  *
  * Returns the indexed name ONLY when a candidate's domain is the brand's own
  * domain; returns null on every miss or failure so the caller falls through to
- * the next source in the chain.
+ * the next source in the funnel.
  */
 export async function searchBrandNameByDomain(domain: string): Promise<string | null> {
   const normalized = normalizeDomain(domain);

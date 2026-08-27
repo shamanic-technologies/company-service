@@ -4,7 +4,7 @@ import { RETIRED_GOALS, funnelKeysForRetiredGoal, toRetiredGoal } from '../../sr
 import { SALES_FUNNELS } from '../../src/services/salesFunnelCatalogue';
 
 /**
- * Form submission is its OWN chain, and it stays that way through the goal
+ * Form submission is its OWN funnel, and it stays that way through the goal
  * retirement.
  *
  * It used to collapse onto the `signup` runtime token, so features-service —
@@ -13,7 +13,7 @@ import { SALES_FUNNELS } from '../../src/services/salesFunnelCatalogue';
  * must not undo it. The Form Magnet funnel is the distinction now, and it is
  * carried by the key itself rather than by a word beside it.
  */
-describe('form submission is its own chain', () => {
+describe('form submission is its own funnel', () => {
   it('is still understood as a word, in both spellings', () => {
     expect(RETIRED_GOALS).toContain('formSubmission');
     for (const wire of ['form_submissions', 'formSubmission'] as const) {
@@ -31,7 +31,7 @@ describe('form submission is its own chain', () => {
     ]);
   });
 
-  it('keeps the two sibling chains distinct in the catalogue', () => {
+  it('keeps the two sibling funnels distinct in the catalogue', () => {
     // Siblings (visit -> micro-conversion -> paid) that once shared one goal.
     // Now they are two keys, and no word can collapse them again.
     const form = SALES_FUNNELS.find((f) => f.key === 'form_magnet')!;

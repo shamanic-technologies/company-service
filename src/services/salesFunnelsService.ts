@@ -69,14 +69,14 @@ export type FunnelRates = Partial<Record<SalesFunnelRateKey, number | null>>;
 /** One declared funnel, as read. Absent values are `null`, never invented. */
 export interface DeclaredSalesFunnel {
   funnelKey: SalesFunnelKey;
-  /** Whether the org currently sells through this chain. */
+  /** Whether the org currently sells through this funnel. */
   active: boolean;
-  /** Human name of the chain, from the catalogue. */
+  /** Human name of the funnel, from the catalogue. */
   name: string;
-  /** The chain the rates below price. */
+  /** The funnel the rates below price. */
   steps: string[];
   /**
-   * The event that STARTS this chain. A consumer matches an acquisition channel
+   * The event that STARTS this funnel. A consumer matches an acquisition channel
    * against it: a channel that can only produce a phone conversation cannot feed
    * a funnel that starts at a `website_visit`. `steps[0]` is the same event as a
    * label.
@@ -96,7 +96,7 @@ export interface DeclaredSalesFunnel {
    * was the poorer word (both meeting funnels mapped onto one `meetingBooked`,
    * so no consumer could price them apart). The KEY is the whole answer.
    */
-  /** Exactly the rates THIS funnel's chain prices, in chain order. */
+  /** Exactly the rates THIS funnel's funnel prices, in funnel order. */
   rates: Record<string, number | null>;
   lifetimeRevenueUsd: number | null;
   destinationUrl: string | null;
@@ -120,17 +120,17 @@ export interface SalesFunnelPatch {
   bookingUrl?: string | null;
 }
 
-/** Thrown when a patch names a rate outside the funnel's own chain (→ 400). */
-export class SalesFunnelRateNotInChainError extends Error {
+/** Thrown when a patch names a rate outside the funnel's own funnel (→ 400). */
+export class SalesFunnelRateNotInFunnelError extends Error {
   constructor(
     public readonly funnelKey: SalesFunnelKey,
     public readonly rateKeys: string[]
   ) {
     super(
       `Funnel "${funnelKey}" does not price ${rateKeys.join(', ')}. ` +
-      'A rate that is not a leg of this funnel\'s chain is rejected rather than stored where nothing would ever read it.'
+      'A rate that is not a leg of this funnel\'s funnel is rejected rather than stored where nothing would ever read it.'
     );
-    this.name = 'SalesFunnelRateNotInChainError';
+    this.name = 'SalesFunnelRateNotInFunnelError';
   }
 }
 
@@ -138,7 +138,7 @@ export class SalesFunnelRateNotInChainError extends Error {
 export class SalesFunnelDestinationNotUsedError extends Error {
   constructor(funnelKey: SalesFunnelKey, field: 'destinationUrl' | 'bookingUrl') {
     super(
-      `Funnel "${funnelKey}" has no ${field}: its chain neither lands a click on the brand's site nor contains a meeting.`
+      `Funnel "${funnelKey}" has no ${field}: its funnel neither lands a click on the brand's site nor contains a meeting.`
     );
     this.name = 'SalesFunnelDestinationNotUsedError';
   }
@@ -183,7 +183,7 @@ export function normalizeBookingUrl(input: string): string {
 }
 
 /**
- * Reject a patch that names a rate the funnel's chain does not convert at, or a
+ * Reject a patch that names a rate the funnel's funnel does not convert at, or a
  * destination it has no use for. Fail loud rather than dropping the field: a
  * silently-ignored write reads back as "the brand never declared it".
  */
@@ -192,7 +192,7 @@ export function assertPatchFitsFunnel(def: SalesFunnelDef, patch: SalesFunnelPat
     (key) => !funnelPricesRate(def, key as SalesFunnelRateKey)
   );
   if (foreign.length > 0) {
-    throw new SalesFunnelRateNotInChainError(def.key, foreign);
+    throw new SalesFunnelRateNotInFunnelError(def.key, foreign);
   }
   if (patch.destinationUrl !== undefined && !def.pageDestination) {
     throw new SalesFunnelDestinationNotUsedError(def.key, 'destinationUrl');
@@ -205,7 +205,7 @@ export function assertPatchFitsFunnel(def: SalesFunnelDef, patch: SalesFunnelPat
 type FunnelRow = typeof brandSalesFunnels.$inferSelect;
 
 /**
- * Read a stored row as the funnel it declares. Only the chain's OWN rates are
+ * Read a stored row as the funnel it declares. Only the funnel's OWN rates are
  * projected — the columns a funnel does not price are not its business, and
  * emitting them as null would read as "this funnel has that leg, unfilled".
  */
@@ -223,7 +223,7 @@ export function formatDeclaredFunnel(row: FunnelRow): DeclaredSalesFunnel {
     startEvent: def.startEvent,
     milestoneStep: def.milestoneStep,
     // Fails loud on a funnel whose milestone is not one of its steps, rather
-    // than answering 0 — which is a real position in the chain, the start event.
+    // than answering 0 — which is a real position in the funnel, the start event.
     milestoneStepIndex: funnelMilestoneStepIndex(def),
     rates,
     lifetimeRevenueUsd: row.lifetimeRevenueUsd ?? null,
@@ -275,7 +275,7 @@ export class LastActiveSalesFunnelError extends Error {
 /**
  * Thrown when a caller sends a retired goal that names no funnel at all (→ 400).
  *
- * Only `whatsappConversation` reaches this: the catalogue has no whatsapp chain,
+ * Only `whatsappConversation` reaches this: the catalogue has no whatsapp funnel,
  * so there is nothing the goal could declare. Fail loud rather than accept a
  * write that would silently declare nothing — a 200 there would tell the caller
  * the brand now sells through something it does not.
@@ -283,7 +283,7 @@ export class LastActiveSalesFunnelError extends Error {
 export class RetiredGoalNamesNoFunnelError extends Error {
   constructor(public readonly goal: RetiredGoal) {
     super(
-      `The goal "${goal}" names no sales funnel: the catalogue has no chain for it, so there is ` +
+      `The goal "${goal}" names no sales funnel: the catalogue has no funnel for it, so there is ` +
       'nothing it can declare. State the funnels this brand sells through instead.'
     );
     this.name = 'RetiredGoalNamesNoFunnelError';
@@ -464,8 +464,8 @@ export class SalesFunnelsService {
       .insert(brandSalesFunnels)
       .values({ orgId, brandId, offerId, funnelKey, ...write })
       .onConflictDoUpdate({
-        // The natural key is the OFFER and the chain: two offers of one brand
-        // legitimately sell through the same chain at different rates.
+        // The natural key is the OFFER and the funnel: two offers of one brand
+        // legitimately sell through the same funnel at different rates.
         target: [brandSalesFunnels.offerId, brandSalesFunnels.funnelKey],
         // Only the columns the patch carries are named, so an omitted field is
         // left exactly as stored and an explicit null clears it.

@@ -194,7 +194,7 @@ describe('Sales Funnels Endpoints', () => {
     expect(Object.values(res.body.funnel.rates).every((v) => v === null)).toBe(true);
   });
 
-  it('carries no goal — the key is the whole answer, and it tells the meeting chains apart', () => {
+  it('carries no goal — the key is the whole answer, and it tells the meeting funnels apart', () => {
     // The goal is retired because it could not do this: BOTH meeting funnels
     // said `meetingBooked`, so a consumer reading the goal could not price a
     // meeting won from a reply apart from one won on the website.
@@ -466,7 +466,7 @@ describe('Sales Funnels Endpoints', () => {
   });
 
   // ── Validation ─────────────────────────────────────────────────────────────
-  it('rejects a rate that is not a leg of this chain', async () => {
+  it('rejects a rate that is not a leg of this funnel', async () => {
     const res = await request(app)
       .put(one(brandId, 'website_purchases'))
       .set(getAuthHeaders(ownerOrgId))
@@ -476,7 +476,7 @@ describe('Sales Funnels Endpoints', () => {
     expect(res.body.error).toMatch(/does not price replyToMeetingPct/);
   });
 
-  it('rejects a booking link on a chain with no meeting', async () => {
+  it('rejects a booking link on a funnel with no meeting', async () => {
     const res = await request(app)
       .put(one(brandId, 'website_purchases'))
       .set(getAuthHeaders(ownerOrgId))
@@ -486,7 +486,7 @@ describe('Sales Funnels Endpoints', () => {
     expect(res.body.error).toMatch(/no bookingUrl/);
   });
 
-  it('rejects a page destination on a chain that never lands a click on the site', async () => {
+  it('rejects a page destination on a funnel that never lands a click on the site', async () => {
     const res = await request(app)
       .put(one(brandId, 'sales_meetings_from_conversation'))
       .set(getAuthHeaders(ownerOrgId))

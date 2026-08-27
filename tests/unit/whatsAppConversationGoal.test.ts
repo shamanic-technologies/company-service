@@ -9,8 +9,8 @@ import {
 /**
  * whatsappConversation is the one retired goal that DIES with the vocabulary.
  *
- * Every other goal named a chain the catalogue has, so retiring it costs
- * nothing — the funnel says the same thing, better. There is no whatsapp chain,
+ * Every other goal named a funnel the catalogue has, so retiring it costs
+ * nothing — the funnel says the same thing, better. There is no whatsapp funnel,
  * so this goal has nothing to become. No brand in production carries it.
  *
  * What is pinned here is that it neither disappears silently nor gets a

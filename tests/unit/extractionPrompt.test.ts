@@ -48,8 +48,8 @@ function setDbSequence(results: unknown[][]) {
 }
 
 vi.mock('../../src/db', () => {
-  const chainable = () => {
-    const chain: Record<string, any> = {};
+  const funnelable = () => {
+    const funnel: Record<string, any> = {};
     for (const method of [
       'select',
       'from',
@@ -65,23 +65,23 @@ vi.mock('../../src/db', () => {
       'leftJoin',
       'orderBy',
     ]) {
-      chain[method] = vi.fn().mockReturnValue(chain);
+      funnel[method] = vi.fn().mockReturnValue(funnel);
     }
-    chain.limit = vi.fn().mockImplementation(() => {
+    funnel.limit = vi.fn().mockImplementation(() => {
       const result = dbCallResults[dbCallIndex] ?? [];
       dbCallIndex++;
       return Promise.resolve(result);
     });
-    chain.returning = vi.fn().mockResolvedValue([]);
-    chain.then = (resolve: (v: unknown) => void) => {
+    funnel.returning = vi.fn().mockResolvedValue([]);
+    funnel.then = (resolve: (v: unknown) => void) => {
       const result = dbCallResults[dbCallIndex] ?? [];
       dbCallIndex++;
       return Promise.resolve(result).then(resolve);
     };
-    return chain;
+    return funnel;
   };
   return {
-    db: chainable(),
+    db: funnelable(),
     brands: { id: 'brands.id', name: 'brands.name', url: 'brands.url', domain: 'brands.domain' },
     orgBrands: { orgId: 'ob.orgId', brandId: 'ob.brandId', claimedAt: 'ob.claimedAt' },
     brandExtractedFields: { brandId: 'bef.brandId', fieldKey: 'bef.fieldKey', fieldDescriptionHash: 'bef.fieldDescriptionHash', expiresAt: 'bef.expiresAt', campaignId: 'bef.campaignId' },

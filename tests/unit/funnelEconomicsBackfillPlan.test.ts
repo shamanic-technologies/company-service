@@ -11,7 +11,7 @@ import {
  * the funnel(s) that replaced it.
  *
  * The whole plan is "same name, same number, nothing else": a leg of the
- * funnel's own chain is filled from the economics column that shares its name,
+ * funnel's own funnel is filled from the economics column that shares its name,
  * and a leg with no such column was never stated and stays absent.
  */
 describe('funnel economics backfill plan', () => {
@@ -34,7 +34,7 @@ describe('funnel economics backfill plan', () => {
   });
 
   describe('ratesForFunnel', () => {
-    it('fills only the legs of the funnel own chain', () => {
+    it('fills only the legs of the funnel own funnel', () => {
       expect(ratesForFunnel('website_purchases', stated)).toEqual({
         visitToSignupPct: 12,
         signupToPaidClientPct: 18,
@@ -55,11 +55,11 @@ describe('funnel economics backfill plan', () => {
       expect('meetingBookedToAttendedPct' in website).toBe(false);
     });
 
-    it('never puts one funnel rate on another funnel chain', () => {
+    it('never puts one funnel rate on another funnel funnel', () => {
       const website = ratesForFunnel('sales_meetings_from_website', stated);
       // The website meeting funnel starts on a VISIT, so the reply rate is not
       // its business — borrowing it would state a number the brand never gave
-      // for that chain.
+      // for that funnel.
       expect('replyToMeetingPct' in website).toBe(false);
     });
   });
@@ -87,7 +87,7 @@ describe('funnel economics backfill plan', () => {
       ]);
     });
 
-    it('skips a stored key that names no funnel rather than guessing a chain', () => {
+    it('skips a stored key that names no funnel rather than guessing a funnel', () => {
       const plan = planEconomicsBackfill([
         { ...candidate('website_purchases'), funnelKey: 'whatsapp_chat' as never },
       ]);

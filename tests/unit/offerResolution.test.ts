@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * judgement call we refuse to make.
  */
 
-// A chainable, thenable stand-in for drizzle's query builders: every builder
+// A funnelable, thenable stand-in for drizzle's query builders: every builder
 // method returns the same object, and awaiting it yields the next queued result.
 // That covers `.from().where().orderBy()`, `.where().limit()`,
 // `.values().onConflictDoNothing().returning()` and `.set().where().returning()`

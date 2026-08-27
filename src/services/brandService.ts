@@ -1,7 +1,7 @@
 /**
  * Brand CRUD utilities.
  *
- * brands.name is derived through ONE priority chain — NO LLM, Firecrawl,
+ * brands.name is derived through ONE priority funnel — NO LLM, Firecrawl,
  * chat-service, run, or cost anywhere in it:
  *
  *   1. the logo.dev company index (authoritative, domain-matched — see
@@ -9,14 +9,14 @@
  *   2. the landing page HTML (og:site_name / <title> / JSON-LD)
  *   3. the titlecased domain — the guaranteed non-empty terminal fallback
  *
- * The chain runs at CREATE (getOrCreateBrand) so the onboarding header has a
+ * The funnel runs at CREATE (getOrCreateBrand) so the onboarding header has a
  * real name immediately, but the create path never WAITS on the customer's own
  * website: only the index lookup is awaited, and an index miss returns the
  * titlecased domain right away while the page-HTML derivation runs in the
  * background and upgrades that provisional value in place.
  *
  * ensureBrandName remains the read-path (getBrandDetail) safety net for rows
- * created before this — it runs the same chain and guarantees a non-null name.
+ * created before this — it runs the same funnel and guarantees a non-null name.
  */
 
 import { eq, and, sql, isNull } from 'drizzle-orm';
@@ -360,7 +360,7 @@ async function fillBrandName(brandId: string): Promise<string> {
 }
 
 /**
- * Derive a brand display name with no LLM / run / cost. Priority chain:
+ * Derive a brand display name with no LLM / run / cost. Priority funnel:
  *   1. the logo.dev company index (domain-matched)
  *   2. the landing page HTML
  *   3. the titlecased domain
@@ -374,7 +374,7 @@ async function deriveBrandName(url: string, domain: string): Promise<string> {
 }
 
 /**
- * Links 2 and 3 of the chain: the landing page HTML, then the titlecased
+ * Links 2 and 3 of the funnel: the landing page HTML, then the titlecased
  * domain. Split out so the create path can run it in the BACKGROUND (it is
  * bounded by a fetch of the customer's own site) after the index misses.
  */

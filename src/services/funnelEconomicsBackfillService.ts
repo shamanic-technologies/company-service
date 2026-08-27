@@ -99,7 +99,7 @@ export async function readEconomicsBackfillCandidates(): Promise<EconomicsBackfi
   return [...rows].map((r) => {
     if (!isSalesFunnelKey(r.funnel_key)) {
       // The column carries a CHECK on the four canonical keys, so this cannot
-      // happen — and if it ever did, guessing a chain for it is the one thing
+      // happen — and if it ever did, guessing a funnel for it is the one thing
       // that must not happen here.
       throw new Error(`Stored funnel key names no funnel: ${r.funnel_key}`);
     }

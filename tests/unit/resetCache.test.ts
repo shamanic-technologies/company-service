@@ -143,21 +143,21 @@ const mockedGetBrand = vi.mocked(getBrand);
 const mockedExtractFields = vi.mocked(extractFields);
 
 function mockDbCacheMiss() {
-  const selectChain = {
+  const selectFunnel = {
     select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([]),
   };
-  mockSelect.mockReturnValue(selectChain);
+  mockSelect.mockReturnValue(selectFunnel);
 
-  const insertChain = {
+  const insertFunnel = {
     values: vi.fn().mockReturnThis(),
     onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
   };
-  mockInsert.mockReturnValue(insertChain);
+  mockInsert.mockReturnValue(insertFunnel);
 
-  return { selectChain, insertChain };
+  return { selectFunnel, insertFunnel };
 }
 
 describe('multiBrandExtractFields with resetCache', () => {
