@@ -220,7 +220,7 @@ async function askForOfferName(
       responseFormat: 'json',
       responseSchema: NAMING_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
       temperature: 0,
-      // A two-word answer needs no chain of thought, and the migration walks
+      // A two-word answer needs no funnel of thought, and the migration walks
       // every brand on the platform.
       disableThinking: true,
     },

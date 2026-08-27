@@ -20,9 +20,9 @@
  *
  * TWO RULES DECIDE EVERY VALUE, and both are about not inventing one:
  *
- *  1. A rate is copied ONLY onto a leg of the funnel's OWN chain, and only when
+ *  1. A rate is copied ONLY onto a leg of the funnel's OWN funnel, and only when
  *     `brand_sales_economics` holds a column of that exact name. The catalogue
- *     owns the chains, so which legs a funnel has is never guessed here.
+ *     owns the funnels, so which legs a funnel has is never guessed here.
  *     `meetingBookedToAttendedPct` — the meeting show-up rate — exists only on
  *     the funnel table and was never stated anywhere, so it stays NULL. That is
  *     the whole of the mapping: same name, same number, nothing else.
@@ -97,13 +97,13 @@ export interface PlannedEconomicsFill {
   brandId: string;
   funnelKey: SalesFunnelKey;
   lifetimeRevenueUsd: number;
-  /** Only the legs of this funnel's chain that the brand actually stated. */
+  /** Only the legs of this funnel's funnel that the brand actually stated. */
   rates: Partial<Record<SalesFunnelRateKey, number>>;
 }
 
 /** Why a candidate produced no fill. Counted and printed, never silent. */
 export type EconomicsBackfillSkipReason =
-  /** The stored funnel key names no chain in the catalogue. Never guessed at. */
+  /** The stored funnel key names no funnel in the catalogue. Never guessed at. */
   'unrecognised_funnel_key';
 
 export interface EconomicsBackfillSkip {
@@ -117,7 +117,7 @@ export interface EconomicsBackfillPlan {
 }
 
 /**
- * The rates to write onto one funnel: its own chain, intersected with what the
+ * The rates to write onto one funnel: its own funnel, intersected with what the
  * brand stated. A leg the brand never stated is simply absent from the result —
  * it is never written as 0 and never borrowed from another leg.
  */

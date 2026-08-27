@@ -349,7 +349,7 @@ export const brandOffers = pgTable("brand_offers", {
  * The sales funnels an org sells a brand through, and what each one is worth.
  *
  * One row per (org, brand, funnel). `active` says whether the org currently
- * sells through that chain; the ROW itself is the MEMORY and is not deleted
+ * sells through that funnel; the ROW itself is the MEMORY and is not deleted
  * when a funnel is switched off, so the rates, lifetime revenue and
  * destinations a user entered are still there when they switch it back on.
  *
@@ -370,7 +370,7 @@ export const brandOffers = pgTable("brand_offers", {
  * Switching off the last active funnel is refused.
  *
  * Which rate columns a funnel may fill is NOT free-form: `salesFunnelCatalogue`
- * owns the chain of each funnel, and a write naming a rate outside that chain is
+ * owns the funnel of each funnel, and a write naming a rate outside that funnel is
  * rejected 400 rather than silently dropped.
  *
  * `meeting_booked_to_attended_pct` and `booking_url` exist ONLY here — they are
@@ -380,7 +380,7 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	// Surrogate key. The natural key USED to be (org_id, brand_id, funnel_key) and
 	// was the primary key; it stopped being unique the day a brand could hold
 	// several OFFERS, because two offers of one brand legitimately sell through
-	// the same chain at different rates and a different lifetime revenue. The
+	// the same funnel at different rates and a different lifetime revenue. The
 	// natural key is now (offer_id, funnel_key), enforced by a unique index.
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	orgId: uuid("org_id").notNull(),
@@ -388,7 +388,7 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	// The OFFER this funnel prices. Conversion rates and a lifetime revenue
 	// describe ONE thing a brand sells, so they hang off the offer rather than
 	// the brand: a brand selling a $200 self-serve plan and a $20k contract
-	// converts and is worth completely different numbers on the same chain.
+	// converts and is worth completely different numbers on the same funnel.
 	//
 	// NULLABLE at the database, NOT NULL at the write path, and the gap between
 	// the two is the one-time migration: the offer a pre-offer brand gets is
@@ -408,18 +408,18 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	// What a client won through THIS funnel is worth. Null = never declared.
 	lifetimeRevenueUsd: integer("lifetime_revenue_usd"),
 	// One column per leg the catalogue can reference. A funnel fills only the
-	// legs of its own chain; the rest stay null for that row.
+	// legs of its own funnel; the rest stay null for that row.
 	replyToMeetingPct: numeric("reply_to_meeting_pct", { precision: 7, scale: 4, mode: "number" }),
 	visitToMeetingPct: numeric("visit_to_meeting_pct", { precision: 7, scale: 4, mode: "number" }),
 	// The meeting SHOW-UP rate — booked → actually attended. It sits in the
-	// middle of both meeting chains and is stored nowhere else in the fleet.
+	// middle of both meeting funnels and is stored nowhere else in the fleet.
 	meetingBookedToAttendedPct: numeric("meeting_booked_to_attended_pct", { precision: 7, scale: 4, mode: "number" }),
 	meetingToClosePct: numeric("meeting_to_close_pct", { precision: 7, scale: 4, mode: "number" }),
 	visitToSignupPct: numeric("visit_to_signup_pct", { precision: 7, scale: 4, mode: "number" }),
 	signupToPaidClientPct: numeric("signup_to_paid_client_pct", { precision: 7, scale: 4, mode: "number" }),
 	visitToFormSubmissionPct: numeric("visit_to_form_submission_pct", { precision: 7, scale: 4, mode: "number" }),
 	formSubmissionToPaidClientPct: numeric("form_submission_to_paid_client_pct", { precision: 7, scale: 4, mode: "number" }),
-	// The legs of the chains that begin somewhere other than a conversation
+	// The legs of the funnels that begin somewhere other than a conversation
 	// leading to a meeting, or the brand's own website. None of these has a
 	// counterpart on the brand-wide `brand_sales_economics` record — that record
 	// predates them — so they are stated on the funnel or not at all.
@@ -431,7 +431,7 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	// Null = never declared (the brand's own landing page is the fallback the
 	// CONSUMER applies, never a value written here).
 	destinationUrl: text("destination_url"),
-	// The scheduling page, for a funnel whose chain contains a meeting. Always
+	// The scheduling page, for a funnel whose funnel contains a meeting. Always
 	// optional — a brand that books over email still runs the funnel.
 	bookingUrl: text("booking_url"),
 	// PROVENANCE, for the one-time backfill that gave every brand carrying a
@@ -451,7 +451,7 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-	// The natural key, now that a brand holds offers: one declaration of a chain
+	// The natural key, now that a brand holds offers: one declaration of a funnel
 	// PER OFFER. `offer_id` is nullable, and Postgres treats NULLs as distinct, so
 	// this index constrains nothing while rows wait for the migration — which is
 	// what the partial index below is for.

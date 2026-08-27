@@ -11,10 +11,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ─── Mocks (must be declared before imports) ─────────────────────────────────
 
 vi.mock('../../src/db', () => {
-  const chainWithLimit = {
-    select: () => chainWithLimit,
-    from: () => chainWithLimit,
-    where: () => chainWithLimit,
+  const funnelWithLimit = {
+    select: () => funnelWithLimit,
+    from: () => funnelWithLimit,
+    where: () => funnelWithLimit,
     limit: () => [{ id: 'brand-1', url: 'https://example.com', name: 'Test', domain: 'example.com' }],
     // When called without .limit() (getCachedImages), resolve as iterable array
     [Symbol.iterator]: function* () { /* empty — no cached images */ },

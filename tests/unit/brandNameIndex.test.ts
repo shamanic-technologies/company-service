@@ -1,5 +1,5 @@
 /**
- * brands.name priority chain: logo.dev index -> landing-page HTML -> titlecased
+ * brands.name priority funnel: logo.dev index -> landing-page HTML -> titlecased
  * domain, both at CREATE time (fillBrandNameOnCreate) and on the read-path
  * safety net (ensureBrandName).
  */
@@ -23,39 +23,39 @@ function setReturningSequence(results: unknown[][]) {
 }
 
 vi.mock('../../src/db', () => {
-  const chainable = () => {
-    const chain: Record<string, any> = {};
+  const funnelable = () => {
+    const funnel: Record<string, any> = {};
     for (const method of ['select', 'from', 'insert', 'values', 'onConflictDoUpdate', 'onConflictDoNothing']) {
-      chain[method] = vi.fn().mockReturnValue(chain);
+      funnel[method] = vi.fn().mockReturnValue(funnel);
     }
-    chain.update = vi.fn().mockReturnValue(chain);
-    chain.set = (...args: unknown[]) => {
+    funnel.update = vi.fn().mockReturnValue(funnel);
+    funnel.set = (...args: unknown[]) => {
       updateSetMock(...args);
-      return chain;
+      return funnel;
     };
-    chain.where = (...args: unknown[]) => {
+    funnel.where = (...args: unknown[]) => {
       updateWhereMock(...args);
-      return chain;
+      return funnel;
     };
-    chain.limit = vi.fn().mockImplementation(() => {
+    funnel.limit = vi.fn().mockImplementation(() => {
       const result = selectResults[selectIndex] ?? [];
       selectIndex++;
       return Promise.resolve(result);
     });
-    chain.returning = vi.fn().mockImplementation(() => {
+    funnel.returning = vi.fn().mockImplementation(() => {
       const result = returningResults[returningIndex] ?? [];
       returningIndex++;
       return Promise.resolve(result);
     });
-    chain.then = (resolve: (v: unknown) => void) => {
+    funnel.then = (resolve: (v: unknown) => void) => {
       const result = selectResults[selectIndex] ?? [];
       selectIndex++;
       return Promise.resolve(result).then(resolve);
     };
-    return chain;
+    return funnel;
   };
   return {
-    db: chainable(),
+    db: funnelable(),
     brands: { id: 'brands.id', name: 'brands.name', url: 'brands.url', domain: 'brands.domain' },
   };
 });
@@ -82,7 +82,7 @@ function htmlResponse(html: string, ok = true, status = 200) {
   return { ok, status, text: () => Promise.resolve(html) };
 }
 
-describe('brand name priority chain', () => {
+describe('brand name priority funnel', () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
   beforeEach(() => {

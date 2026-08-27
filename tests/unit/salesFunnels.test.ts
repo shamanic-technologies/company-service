@@ -22,7 +22,7 @@ import {
 } from '../../src/services/salesFunnelCatalogue';
 import {
   SalesFunnelDestinationNotUsedError,
-  SalesFunnelRateNotInChainError,
+  SalesFunnelRateNotInFunnelError,
   assertPatchFitsFunnel,
   buildFunnelWrite,
   formatDeclaredFunnel,
@@ -50,13 +50,13 @@ describe('sales funnel catalogue', () => {
     expect(SALES_FUNNEL_KEYS).toEqual(SALES_FUNNELS.map((f) => f.key));
   });
 
-  it('prices every arrow of every chain — legs is one shorter than steps', () => {
+  it('prices every arrow of every funnel — legs is one shorter than steps', () => {
     for (const def of SALES_FUNNELS) {
       expect(def.legs.length).toBe(def.steps.length - 1);
     }
   });
 
-  it('gives the meeting show-up rate a home in every meeting chain', () => {
+  it('gives the meeting show-up rate a home in every meeting funnel', () => {
     const withShowUp = SALES_FUNNELS.filter((f) =>
       f.legs.includes('meetingBookedToAttendedPct')
     ).map((f) => f.key);
@@ -67,7 +67,7 @@ describe('sales funnel catalogue', () => {
     ]);
   });
 
-  it('collects a booking link exactly for the chains that contain a meeting', () => {
+  it('collects a booking link exactly for the funnels that contain a meeting', () => {
     for (const def of SALES_FUNNELS) {
       const hasMeeting = def.steps.includes('Meeting booked');
       expect(def.bookingLink).toBe(hasMeeting);
@@ -89,9 +89,9 @@ describe('sales funnel catalogue', () => {
     for (const def of SALES_FUNNELS) {
       expect('goal' in def).toBe(false);
     }
-    const meetingChains = SALES_FUNNELS.filter((f) => f.steps.includes('Meeting booked'));
-    expect(meetingChains).toHaveLength(3);
-    expect(new Set(meetingChains.map((f) => f.key)).size).toBe(3);
+    const meetingFunnels = SALES_FUNNELS.filter((f) => f.steps.includes('Meeting booked'));
+    expect(meetingFunnels).toHaveLength(3);
+    expect(new Set(meetingFunnels.map((f) => f.key)).size).toBe(3);
   });
 
   it('rejects an unknown funnel key rather than guessing one', () => {
@@ -109,15 +109,15 @@ describe('sales funnel catalogue', () => {
 });
 
 describe('a patch must describe the funnel it targets', () => {
-  it('rejects a rate outside the chain instead of storing it where nothing reads it', () => {
+  it('rejects a rate outside the funnel instead of storing it where nothing reads it', () => {
     expect(() =>
       assertPatchFitsFunnel(salesFunnelByKey('website_purchases'), {
         rates: { visitToSignupPct: 30, replyToMeetingPct: 10 },
       })
-    ).toThrow(SalesFunnelRateNotInChainError);
+    ).toThrow(SalesFunnelRateNotInFunnelError);
   });
 
-  it('accepts a subset of the chain — a funnel can be priced one leg at a time', () => {
+  it('accepts a subset of the funnel — a funnel can be priced one leg at a time', () => {
     expect(() =>
       assertPatchFitsFunnel(salesFunnelByKey('sales_meetings_from_conversation'), {
         rates: { meetingBookedToAttendedPct: 70 },
@@ -133,7 +133,7 @@ describe('a patch must describe the funnel it targets', () => {
     ).toThrow(SalesFunnelDestinationNotUsedError);
   });
 
-  it('rejects a booking link on a funnel whose chain contains no meeting', () => {
+  it('rejects a booking link on a funnel whose funnel contains no meeting', () => {
     expect(() =>
       assertPatchFitsFunnel(salesFunnelByKey('form_magnet'), {
         bookingUrl: 'https://cal.com/team/30min',
@@ -171,7 +171,7 @@ describe('omitted leaves unchanged, null clears', () => {
   });
 });
 
-describe('a declared funnel reads back only its own chain', () => {
+describe('a declared funnel reads back only its own funnel', () => {
   const row = {
     brandId: 'b',
     funnelKey: 'website_purchases',
@@ -264,7 +264,7 @@ describe('write tolerance for yesterday\'s words', () => {
     }
   });
 
-  it("understands the dashboard's sales_meetings as the meeting chain", () => {
+  it("understands the dashboard's sales_meetings as the meeting funnel", () => {
     expect(toRetiredGoal('sales_meetings')).toBe('meetingBooked');
     expect(
       funnelKeysForRetiredGoal(toRetiredGoal('booked_meetings'), { hasClickDestination: false })

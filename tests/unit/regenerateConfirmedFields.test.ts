@@ -82,7 +82,7 @@ const CONFIRMED = {
 };
 
 /**
- * Queue db reads in call order. `getCachedFields` awaits the chain itself (its
+ * Queue db reads in call order. `getCachedFields` awaits the funnel itself (its
  * terminal is `.where()`), `getBrand` terminates on `.limit()` — both pull the
  * next queued result.
  */
@@ -90,7 +90,7 @@ function mockDbReads(queued: any[][]) {
   let call = 0;
   const next = () => Promise.resolve(queued[call++] ?? []);
   mockSelect.mockImplementation(() => {
-    const chain: any = {
+    const funnel: any = {
       select: vi.fn().mockReturnThis(),
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -99,7 +99,7 @@ function mockDbReads(queued: any[][]) {
       limit: vi.fn().mockImplementation(next),
       then: (resolve: any, reject: any) => next().then(resolve, reject),
     };
-    return chain;
+    return funnel;
   });
   mockInsert.mockReturnValue({
     values: vi.fn().mockReturnThis(),

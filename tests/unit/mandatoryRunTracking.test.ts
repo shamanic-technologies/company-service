@@ -52,23 +52,23 @@ const mockLimit = vi.fn().mockImplementation(() => {
 });
 
 vi.mock('../../src/db', () => {
-  const chainable = () => {
-    const chain: Record<string, any> = {};
+  const funnelable = () => {
+    const funnel: Record<string, any> = {};
     for (const method of ['select', 'from', 'where', 'innerJoin', 'leftJoin', 'insert', 'values', 'onConflictDoUpdate', 'onConflictDoNothing', 'update', 'set', 'orderBy']) {
-      chain[method] = vi.fn().mockReturnValue(chain);
+      funnel[method] = vi.fn().mockReturnValue(funnel);
     }
-    chain.limit = mockLimit;
-    chain.returning = vi.fn().mockResolvedValue([]);
-    // Make chain thenable so queries without .limit() can be awaited
-    chain.then = (resolve: (v: unknown) => void) => {
+    funnel.limit = mockLimit;
+    funnel.returning = vi.fn().mockResolvedValue([]);
+    // Make funnel thenable so queries without .limit() can be awaited
+    funnel.then = (resolve: (v: unknown) => void) => {
       const result = dbCallResults[dbCallIndex] ?? [];
       dbCallIndex++;
       return Promise.resolve(result).then(resolve);
     };
-    return chain;
+    return funnel;
   };
   return {
-    db: chainable(),
+    db: funnelable(),
     brands: { id: 'brands.id', orgId: 'brands.orgId', name: 'brands.name', url: 'brands.url', domain: 'brands.domain' },
     brandExtractedFields: { brandId: 'bef.brandId', fieldKey: 'bef.fieldKey', fieldDescriptionHash: 'bef.fieldDescriptionHash', expiresAt: 'bef.expiresAt', campaignId: 'bef.campaignId' },
     orgBrands: { orgId: 'ob.orgId', brandId: 'ob.brandId', claimedAt: 'ob.claimedAt' },

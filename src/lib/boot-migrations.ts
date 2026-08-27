@@ -125,15 +125,15 @@ export function describeError(err: unknown): string {
 }
 
 /**
- * The whole cause chain on one line.
+ * The whole cause funnel on one line.
  *
  * Drivers wrap the interesting error: drizzle reports `Failed query: CREATE
  * SCHEMA IF NOT EXISTS "drizzle"` and hides `password authentication failed`
  * one `cause` down, where a default `console.error` of the top-level error does
  * not print it. An operator reading the deploy log needs the bottom of the
- * chain, so log this alongside the error itself.
+ * funnel, so log this alongside the error itself.
  */
-export function describeErrorChain(err: unknown): string {
+export function describeErrorCauses(err: unknown): string {
   const parts: string[] = [];
   for (const candidate of flattenErrors(err)) {
     if (candidate instanceof Error || (typeof candidate === 'object' && candidate !== null)) {

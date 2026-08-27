@@ -9,21 +9,21 @@ const { mockReturning } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/db', () => {
-  const chainable = () => {
-    const chain: Record<string, any> = {};
+  const funnelable = () => {
+    const funnel: Record<string, any> = {};
     for (const method of [
       'select', 'from', 'where', 'innerJoin',
       'insert', 'values', 'onConflictDoUpdate', 'onConflictDoNothing',
       'update', 'set', 'limit', 'delete',
     ]) {
-      chain[method] = vi.fn().mockReturnValue(chain);
+      funnel[method] = vi.fn().mockReturnValue(funnel);
     }
-    chain.returning = mockReturning;
-    chain.then = (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve);
-    return chain;
+    funnel.returning = mockReturning;
+    funnel.then = (resolve: (v: unknown) => void) => Promise.resolve([]).then(resolve);
+    return funnel;
   };
   return {
-    db: chainable(),
+    db: funnelable(),
     brands: { id: 'brands.id', name: 'brands.name', domain: 'brands.domain' },
     brandsOld: { id: 'brands_old.id', orgId: 'brands_old.orgId', name: 'brands_old.name', domain: 'brands_old.domain' },
     orgBrands: { orgId: 'ob.orgId', brandId: 'ob.brandId' },

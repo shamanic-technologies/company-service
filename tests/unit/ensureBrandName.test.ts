@@ -10,8 +10,8 @@ function setDbSequence(results: unknown[][]) {
 }
 
 vi.mock('../../src/db', () => {
-  const chainable = () => {
-    const chain: Record<string, any> = {};
+  const funnelable = () => {
+    const funnel: Record<string, any> = {};
     for (const method of [
       'select',
       'from',
@@ -21,28 +21,28 @@ vi.mock('../../src/db', () => {
       'onConflictDoUpdate',
       'onConflictDoNothing',
     ]) {
-      chain[method] = vi.fn().mockReturnValue(chain);
+      funnel[method] = vi.fn().mockReturnValue(funnel);
     }
-    chain.update = vi.fn().mockReturnValue(chain);
-    chain.set = (...args: unknown[]) => {
+    funnel.update = vi.fn().mockReturnValue(funnel);
+    funnel.set = (...args: unknown[]) => {
       updateSetMock(...args);
-      return chain;
+      return funnel;
     };
-    chain.limit = vi.fn().mockImplementation(() => {
+    funnel.limit = vi.fn().mockImplementation(() => {
       const result = dbCallResults[dbCallIndex] ?? [];
       dbCallIndex++;
       return Promise.resolve(result);
     });
-    chain.returning = vi.fn().mockResolvedValue([]);
-    chain.then = (resolve: (v: unknown) => void) => {
+    funnel.returning = vi.fn().mockResolvedValue([]);
+    funnel.then = (resolve: (v: unknown) => void) => {
       const result = dbCallResults[dbCallIndex] ?? [];
       dbCallIndex++;
       return Promise.resolve(result).then(resolve);
     };
-    return chain;
+    return funnel;
   };
   return {
-    db: chainable(),
+    db: funnelable(),
     brands: {
       id: 'brands.id',
       orgId: 'brands.orgId',
@@ -63,7 +63,7 @@ vi.mock('drizzle-orm', () => ({
   ),
 }));
 
-// This file covers the page-HTML link of the chain, so the company index always
+// This file covers the page-HTML link of the funnel, so the company index always
 // misses here. Index-first behaviour lives in brandNameIndex.test.ts.
 vi.mock('../../src/lib/logo-dev-search', () => ({
   searchBrandNameByDomain: vi.fn().mockResolvedValue(null),

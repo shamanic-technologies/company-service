@@ -28,7 +28,7 @@ describe('brands.name lazy-fill', () => {
       .send({ url });
 
     // The onboarding header reads this `name`, so it must be a real value on
-    // create. Test env skips the network chain and lands on the terminal
+    // create. Test env skips the network funnel and lands on the terminal
     // titlecased-domain fallback.
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('name');

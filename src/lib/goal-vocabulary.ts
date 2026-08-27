@@ -151,7 +151,7 @@ export interface RetiredGoalContext {
  *     model is multi-funnel, so a combined goal is expressible without loss and
  *     choosing one of its halves would throw away what the brand said.
  *
- * `whatsappConversation` maps to NOTHING: the catalogue has no whatsapp chain,
+ * `whatsappConversation` maps to NOTHING: the catalogue has no whatsapp funnel,
  * so there is no funnel it could mean. No brand in production carries it. The
  * empty list is the honest answer and the caller fails loud on it rather than
  * declaring a funnel the goal never named.
