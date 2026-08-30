@@ -25,6 +25,7 @@ import {
   RetiredGoalNamesNoFunnelError,
   salesFunnelsService,
 } from '../services/salesFunnelsService';
+import { SalesFunnelArrowInvalidError } from '../services/salesFunnelArrowRatesService';
 import { ClickDestinationValidationError } from '../services/clickDestinationService';
 import {
   getUserFieldsViewByOfferId,
@@ -99,6 +100,7 @@ function rejectDeclaration(res: Response, error: unknown): boolean {
   if (rejectOfferProblem(res, error)) return true;
   if (
     error instanceof SalesFunnelRateNotInFunnelError ||
+    error instanceof SalesFunnelArrowInvalidError ||
     error instanceof SalesFunnelDestinationNotUsedError ||
     error instanceof SalesFunnelRequiresWebsiteError ||
     error instanceof LastActiveSalesFunnelError ||

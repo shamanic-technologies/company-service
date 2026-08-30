@@ -359,3 +359,38 @@ for (const def of SALES_FUNNELS) {
   }
   funnelMilestoneStepIndex(def);
 }
+
+/**
+ * ONE ARROW of a funnel: the two steps it connects, and the NAMED rate the
+ * catalogue happens to price it with today.
+ *
+ * An arrow is identified by its two step LABELS, not by a name from a closed
+ * list. That is what lets a brand state a rate for an arrow brand-service does
+ * not know about — a funnel gaining a step (a phone call placed between a
+ * positive reply and a booked meeting) creates arrows no `SalesFunnelRateKey`
+ * names, and no column, no enum and no fleet-wide rename is needed for a brand
+ * to price them.
+ *
+ * `rateKey` is the LEGACY named rate for this arrow, present only for the arrows
+ * the catalogue already prices. It is what makes the two vocabularies reconcile
+ * on read: an arrow with no stated rate falls back to it, so nothing a consumer
+ * reads today changes.
+ */
+export interface SalesFunnelArrow {
+  fromStep: string;
+  toStep: string;
+  rateKey: SalesFunnelRateKey;
+}
+
+/**
+ * The arrows of this funnel, in funnel order. `legs[i]` is the rate between
+ * `steps[i]` and `steps[i + 1]`, which the load-time check above already
+ * guarantees is a total mapping.
+ */
+export function funnelArrows(def: SalesFunnelDef): SalesFunnelArrow[] {
+  return def.legs.map((rateKey, i) => ({
+    fromStep: def.steps[i],
+    toStep: def.steps[i + 1],
+    rateKey,
+  }));
+}

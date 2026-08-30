@@ -1,5 +1,5 @@
 import { and, asc, eq, isNull, SQL } from 'drizzle-orm';
-import { db, brandOffers, brandSalesFunnels, brandUserFields, brands } from '../db';
+import { db, brandOffers, brandSalesFunnelArrowRates, brandSalesFunnels, brandUserFields, brands } from '../db';
 import {
   OFFER_NAME_MAX_CHARS,
   OFFER_NAME_MAX_WORDS,
@@ -369,7 +369,10 @@ export async function resolveOfferForWrite(orgId: string, brandId: string): Prom
  * exactly what it read yesterday, rather than reading empty.
  */
 export function offerScope(
-  column: typeof brandSalesFunnels.offerId | typeof brandUserFields.offerId,
+  column:
+    | typeof brandSalesFunnels.offerId
+    | typeof brandUserFields.offerId
+    | typeof brandSalesFunnelArrowRates.offerId,
   offerId: string | null
 ): SQL {
   return offerId === null ? isNull(column) : eq(column, offerId);

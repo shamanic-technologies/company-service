@@ -1,5 +1,5 @@
 import { and, eq, notInArray } from 'drizzle-orm';
-import { db, brandSalesFunnels } from '../db';
+import { db, brandSalesFunnels, brandSalesFunnelArrowRates } from '../db';
 import {
   offerScope,
   resolveOfferForWrite,
@@ -16,6 +16,15 @@ import {
   funnelRateKeys,
   salesFunnelByKey,
 } from './salesFunnelCatalogue';
+import {
+  SalesFunnelArrowRate,
+  SalesFunnelArrowRatePatch,
+  StoredArrowRate,
+  assertArrowIdentifiable,
+  readArrowRates,
+  resolveFunnelArrowRates,
+  writeArrowRates,
+} from './salesFunnelArrowRatesService';
 import {
   funnelKeysForRetiredGoal,
   type RetiredGoal,
@@ -98,6 +107,21 @@ export interface DeclaredSalesFunnel {
    */
   /** Exactly the rates THIS funnel's funnel prices, in funnel order. */
   rates: Record<string, number | null>;
+  /**
+   * Every ARROW of this funnel, named by the two steps it connects, carrying the
+   * rate this brand states for it and where that rate came from.
+   *
+   * This is the vocabulary that survives a funnel gaining a step: an arrow is
+   * identified by its steps rather than by a name from a closed list, so a brand
+   * can price a leg brand-service has never heard of and no consumer has to
+   * learn a new field name.
+   *
+   * PRECEDENCE: a rate the brand stated for the arrow WINS; the legacy named
+   * rate in `rates` is the fallback for the arrows the catalogue already prices.
+   * `rates` itself is untouched by any of this and still answers exactly what it
+   * answered before.
+   */
+  arrows: SalesFunnelArrowRate[];
   lifetimeRevenueUsd: number | null;
   destinationUrl: string | null;
   bookingUrl: string | null;
@@ -115,6 +139,12 @@ export interface SalesFunnelPatch {
   /** Switch the funnel on or off. Omitted = leave as stored (true on create). */
   active?: boolean;
   rates?: FunnelRates;
+  /**
+   * Rates stated for ARROWS, identified by the two steps each connects. An arrow
+   * the patch does not name is left as stored; an explicit `null` clears it.
+   * An arrow the catalogue does not know is accepted — that is the point.
+   */
+  arrowRates?: SalesFunnelArrowRatePatch[];
   lifetimeRevenueUsd?: number | null;
   destinationUrl?: string | null;
   bookingUrl?: string | null;
@@ -209,7 +239,10 @@ type FunnelRow = typeof brandSalesFunnels.$inferSelect;
  * projected — the columns a funnel does not price are not its business, and
  * emitting them as null would read as "this funnel has that leg, unfilled".
  */
-export function formatDeclaredFunnel(row: FunnelRow): DeclaredSalesFunnel {
+export function formatDeclaredFunnel(
+  row: FunnelRow,
+  arrowRows: StoredArrowRate[] = []
+): DeclaredSalesFunnel {
   const def = salesFunnelByKey(row.funnelKey as SalesFunnelKey);
   const rates: Record<string, number | null> = {};
   for (const key of funnelRateKeys(def)) {
@@ -226,6 +259,9 @@ export function formatDeclaredFunnel(row: FunnelRow): DeclaredSalesFunnel {
     // than answering 0 — which is a real position in the funnel, the start event.
     milestoneStepIndex: funnelMilestoneStepIndex(def),
     rates,
+    // The arrow view of the same funnel. Stated arrow wins, named rate falls
+    // through, and an arrow nobody priced reads `null` rather than a stand-in.
+    arrows: resolveFunnelArrowRates(def, rates, arrowRows),
     lifetimeRevenueUsd: row.lifetimeRevenueUsd ?? null,
     destinationUrl: row.destinationUrl ?? null,
     bookingUrl: row.bookingUrl ?? null,
@@ -346,7 +382,30 @@ export class SalesFunnelsService {
         )
       );
 
-    return { funnels: rows.map(formatDeclaredFunnel).sort(byCatalogueOrder) };
+    return this.withArrowRates(orgId, brandId, offerId, rows);
+  }
+
+  /**
+   * Attach the arrow-level rates to a set of funnel rows. ONE query for the whole
+   * set — a brand's funnels stay one round trip per table, never one per funnel.
+   */
+  private async withArrowRates(
+    orgId: string,
+    brandId: string,
+    offerId: string | null,
+    rows: FunnelRow[]
+  ): Promise<DeclaredSalesFunnelSet> {
+    const arrowRows = await readArrowRates(
+      orgId,
+      brandId,
+      offerId,
+      rows.map((r) => r.funnelKey as SalesFunnelKey)
+    );
+    return {
+      funnels: rows
+        .map((row) => formatDeclaredFunnel(row, arrowRows))
+        .sort(byCatalogueOrder),
+    };
   }
 
   /**
@@ -377,7 +436,7 @@ export class SalesFunnelsService {
         )
       );
 
-    return { funnels: rows.map(formatDeclaredFunnel).sort(byCatalogueOrder) };
+    return this.withArrowRates(orgId, brandId, offerId, rows);
   }
 
   /** The funnel keys this org currently sells this brand through. */
@@ -440,6 +499,9 @@ export class SalesFunnelsService {
       throw new SalesFunnelRequiresWebsiteError(funnelKey);
     }
     assertPatchFitsFunnel(def, patch);
+    // An arrow is accepted whatever steps it names — brand-service does not have
+    // to know it in advance — but a shape that could never name one is refused.
+    for (const arrow of patch.arrowRates ?? []) assertArrowIdentifiable(arrow);
 
     if (patch.active === false) {
       const active = await this.activeKeys(orgId, brandId, offerId);
@@ -473,7 +535,12 @@ export class SalesFunnelsService {
       })
       .returning();
 
-    return formatDeclaredFunnel(row);
+    if (patch.arrowRates && patch.arrowRates.length > 0) {
+      await writeArrowRates(orgId, brandId, offerId, funnelKey, patch.arrowRates);
+    }
+
+    const arrowRows = await readArrowRates(orgId, brandId, offerId, [funnelKey]);
+    return formatDeclaredFunnel(row, arrowRows);
   }
 
   /**
@@ -691,6 +758,20 @@ export class SalesFunnelsService {
         )
       )
       .returning({ funnelKey: brandSalesFunnels.funnelKey });
+
+    // Erasure is "forget what I told you about this funnel", so the arrow rates
+    // go with it. Leaving them would have a re-declared funnel come back priced
+    // by numbers the user asked us to destroy.
+    await db
+      .delete(brandSalesFunnelArrowRates)
+      .where(
+        and(
+          eq(brandSalesFunnelArrowRates.orgId, orgId),
+          eq(brandSalesFunnelArrowRates.brandId, brandId),
+          offerScope(brandSalesFunnelArrowRates.offerId, offerId),
+          eq(brandSalesFunnelArrowRates.funnelKey, funnelKey)
+        )
+      );
 
     return deleted.length > 0;
   }

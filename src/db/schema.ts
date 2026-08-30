@@ -487,6 +487,70 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 ]);
 
 /**
+ * A rate a brand states for ONE ARROW of one of its sales funnels, identified
+ * by the two STEPS the arrow connects.
+ *
+ * WHY A ROW AND NOT A COLUMN. The rates on `brand_sales_funnels` are a CLOSED
+ * set: one column per arrow the catalogue happens to contain, so a funnel
+ * gaining a step (a phone call placed between a positive reply and a booked
+ * meeting) costs a migration here plus a rename wave through every consumer
+ * that reads the name. Keyed on the two step labels instead, a brand can price
+ * an arrow this service has never heard of, and adding a step to a funnel adds
+ * no schema at all.
+ *
+ * NOT a replacement. The named columns stay, keep being written and keep being
+ * read exactly as they are; a later, separate ship retires them once every
+ * consumer has moved. Where an arrow-level rate and a named column describe the
+ * SAME arrow, the STATED ARROW WINS and the named column is the fallback — one
+ * precedence, stated once, applied on every read.
+ *
+ * Scoped like the funnel it prices: per (offer, funnel), because a rate
+ * describes ONE thing a brand sells. `offer_id` is NOT NULL here, unlike on
+ * `brand_sales_funnels` — that column is nullable only for rows predating the
+ * offer migration, and this table has none: it is new, and every write resolves
+ * an offer before it stores anything. One unique index is therefore the whole
+ * natural key, with no partial index guarding a legacy shape that cannot exist.
+ *
+ * ABSENCE IS THE ANSWER: no row means the brand has not stated this arrow. A
+ * rate is never defaulted, never zero-filled and never derived from a
+ * neighbouring arrow.
+ */
+export const brandSalesFunnelArrowRates = pgTable("brand_sales_funnel_arrow_rates", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	orgId: uuid("org_id").notNull(),
+	brandId: uuid("brand_id").notNull(),
+	offerId: uuid("offer_id").notNull(),
+	funnelKey: text("funnel_key").notNull(),
+	// The two steps the arrow connects, as LABELS. Deliberately free text: the
+	// point of this table is that brand-service does not have to know the arrow
+	// in advance, so there is no CHECK against a step list that would have to be
+	// widened every time a funnel gains a step.
+	fromStep: text("from_step").notNull(),
+	toStep: text("to_step").notNull(),
+	// The share of the arrow's origin step that reaches its destination step.
+	// Same precision and scale as every named rate column, so a value moved
+	// between the two vocabularies is byte-identical. NOT NULL — clearing a rate
+	// deletes the row, which is what keeps "not stated" a single state.
+	ratePct: numeric("rate_pct", { precision: 7, scale: 4, mode: "number" }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	// The natural key: one rate per arrow, per funnel, per offer.
+	uniqueIndex("brand_sales_funnel_arrow_rates_offer_key")
+		.on(table.offerId, table.funnelKey, table.fromStep, table.toStep),
+	foreignKey({
+		columns: [table.brandId],
+		foreignColumns: [brands.id],
+		name: "brand_sales_funnel_arrow_rates_brand_id_fkey",
+	}).onDelete("cascade"),
+	foreignKey({
+		columns: [table.offerId],
+		foreignColumns: [brandOffers.id],
+		name: "brand_sales_funnel_arrow_rates_offer_id_fkey",
+	}).onDelete("cascade"),
+]);
+
+/**
  * Brand business context — the free-form text a user pastes when their brand
  * has NO website. It is the ALTERNATIVE field-extraction SOURCE to a scraped
  * site: when a brand has no `url`, `fieldExtractionService.extractFields` reads
