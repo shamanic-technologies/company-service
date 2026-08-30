@@ -2270,6 +2270,34 @@ export const SalesFunnelRatesSchema = z
   .partial()
   .openapi('SalesFunnelRates');
 
+// A rate stated for ONE ARROW of a funnel, identified by the two STEPS it
+// connects rather than by a name from a closed list. That is what lets a brand
+// price an arrow brand-service does not know in advance — a funnel gaining a
+// step costs no column, no enum and no rename wave across the fleet.
+// `ratePct` null CLEARS the statement; an arrow the patch omits is untouched.
+export const SalesFunnelArrowRatePatchSchema = z
+  .object({
+    fromStep: z.string().min(1),
+    toStep: z.string().min(1),
+    ratePct: PercentSchema.nullable(),
+  })
+  .openapi('SalesFunnelArrowRatePatch');
+
+// READ shape of one arrow. `provenance` says where the rate came from:
+// `stated_arrow` (the brand stated this arrow — WINS), `named_rate` (no
+// statement, so the legacy named rate answered) or `unstated` (nobody priced
+// it, `ratePct` is null and no number is invented). `rateKey` names the legacy
+// column covering this arrow, and is null for an arrow no named rate covers.
+export const SalesFunnelArrowRateSchema = z
+  .object({
+    fromStep: z.string(),
+    toStep: z.string(),
+    ratePct: z.number().nullable(),
+    provenance: z.enum(['stated_arrow', 'named_rate', 'unstated']),
+    rateKey: z.string().nullable(),
+  })
+  .openapi('SalesFunnelArrowRate');
+
 // WRITE request — a PARTIAL patch. Omitted = leave unchanged; explicit `null` =
 // clear back to never-declared. Declaring a funnel needs no fields at all: the
 // declaration is the row, and its numbers can arrive later.
@@ -2279,6 +2307,11 @@ export const DeclareSalesFunnelRequestSchema = z
     // write, since configuring a funnel is saying you sell through it).
     active: z.boolean().optional(),
     rates: SalesFunnelRatesSchema.optional(),
+    // Rates for the funnel's ARROWS, each named by the two steps it connects.
+    // ADDITIVE and independent of `rates`: an arrow the catalogue does not know
+    // is accepted and stored, and where both describe the same arrow the stated
+    // arrow wins on read.
+    arrowRates: z.array(SalesFunnelArrowRatePatchSchema).optional(),
     lifetimeRevenueUsd: z.number().int().positive().nullable().optional(),
     destinationUrl: z.string().min(1).nullable().optional(),
     bookingUrl: z.string().min(1).nullable().optional(),
@@ -2316,6 +2349,12 @@ export const DeclaredSalesFunnelSchema = z
     // so a consumer could not price a meeting won from a reply apart from one
     // won on the website. `funnelKey` is the whole answer.
     rates: z.record(z.string(), z.number().nullable()),
+    // The ARROW view of the same funnel: every arrow the catalogue gives this
+    // funnel, in funnel order, followed by any arrow the brand stated that the
+    // catalogue does not name. A stated arrow rate WINS over the named rate in
+    // `rates` describing the same arrow; `rates` itself is unchanged by any of
+    // it and still answers exactly what it answered before.
+    arrows: z.array(SalesFunnelArrowRateSchema),
     lifetimeRevenueUsd: z.number().int().nullable(),
     destinationUrl: z.string().nullable(),
     bookingUrl: z.string().nullable(),
@@ -2454,7 +2493,11 @@ registry.registerPath({
     '`destinationUrl` is accepted only for a funnel that lands a click on the site and must be on the ' +
     "brand's own domain (or a subdomain); `bookingUrl` only for a funnel whose funnel contains a " +
     'meeting, and it may point at any third-party scheduler. A funnel that starts with a website ' +
-    'visit cannot be declared for a brand that has no website (400).',
+    'visit cannot be declared for a brand that has no website (400). `arrowRates` states a rate ' +
+    'for an ARROW of the funnel, named by the two STEPS it connects — including an arrow this ' +
+    'service does not know in advance, which is how a funnel gains a step without a schema ' +
+    'change. Where a stated arrow and a named rate describe the same arrow, the STATED ARROW ' +
+    'WINS on read and `rates` still answers exactly what it answered before.',
   request: {
     params: z.object({ brandId: z.string().uuid(), funnelKey: AcceptedSalesFunnelKeySchema }),
     body: { content: { 'application/json': { schema: DeclareSalesFunnelRequestSchema } } },

@@ -400,6 +400,13 @@
       "when": 1787649680524,
       "tag": "0058_brand_colors",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788098718588,
+      "tag": "0059_funnel_arrow_rates",
+      "breakpoints": true
     }
   ]
 }
