@@ -15,6 +15,7 @@ import {
   RetiredGoalNamesNoFunnelError,
   salesFunnelsService,
 } from '../services/salesFunnelsService';
+import { SalesFunnelArrowInvalidError } from '../services/salesFunnelArrowRatesService';
 import { ClickDestinationValidationError } from '../services/clickDestinationService';
 import { resolveInternalOrgScope, rejectInternalOrgScope } from '../lib/internal-org-scope';
 import { rejectOfferProblem } from '../lib/offer-scope';
@@ -84,6 +85,7 @@ function rejectDeclaration(res: Response, error: unknown): boolean {
   if (rejectOfferProblem(res, error)) return true;
   if (
     error instanceof SalesFunnelRateNotInFunnelError ||
+    error instanceof SalesFunnelArrowInvalidError ||
     error instanceof SalesFunnelDestinationNotUsedError ||
     error instanceof SalesFunnelRequiresWebsiteError ||
     error instanceof LastActiveSalesFunnelError ||

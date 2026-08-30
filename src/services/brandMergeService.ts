@@ -77,6 +77,19 @@ export async function rewriteBrandReferences(
      )`,
     [sourceBrandId, targetBrandId],
   );
+  // brand_sales_funnel_arrow_rates: unique(org_id, brand_id, funnel_key,
+  // from_step, to_step) — the rates a brand states for the ARROWS of its
+  // funnels. Same shape as the funnel rows above and moved with them: leaving
+  // them behind would strand user-stated numbers on the abandoned row.
+  await query(
+    `DELETE FROM brand_sales_funnel_arrow_rates s WHERE s.brand_id = $1
+     AND EXISTS (
+       SELECT 1 FROM brand_sales_funnel_arrow_rates t
+        WHERE t.brand_id = $2 AND t.org_id = s.org_id AND t.funnel_key = s.funnel_key
+          AND t.from_step = s.from_step AND t.to_step = s.to_step
+     )`,
+    [sourceBrandId, targetBrandId],
+  );
   // One-row-per-(org, brand) tables: the target's own row always wins, so drop
   // the source's row whenever the target already has one FOR THE SAME ORG.
   // `brand_share_tokens` is absent on purpose — it is never rewritten (see below).
@@ -107,6 +120,7 @@ export async function rewriteBrandReferences(
     'brand_business_context',
     'brand_sales_economics',
     'brand_sales_funnels',
+    'brand_sales_funnel_arrow_rates',
     'brand_click_destinations',
     'brand_whatsapp_links',
   ];
