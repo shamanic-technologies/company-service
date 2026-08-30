@@ -1,4 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// The unit suite runs with NO database url (CI), and this service transitively
+// imports `../db`, which throws at import time when one is absent. Only pure
+// functions are exercised here, so the module is stubbed with the named exports
+// its importers reference.
+vi.mock('../../src/db', () => ({
+  db: {},
+  brands: {},
+  brandOffers: {},
+  brandSalesFunnels: {},
+  brandUserFields: {},
+  brandSalesFunnelArrowRates: { offerId: {} },
+}));
+
 import {
   SALES_FUNNELS,
   funnelArrows,
