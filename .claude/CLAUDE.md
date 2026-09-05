@@ -129,6 +129,22 @@ brand-service has NO `buildInternalHeaders`/allowlist helper (unlike instantly-s
 
 **Downstream, at the time of the switch:** features-service `declared-funnels.ts` read a funnel's `goal` and threw `UnknownFunnelGoalError` without one, and campaign-service's `brand-sales-funnels-client` dropped any funnel with no `goal`. Both migrate to the funnel key; the goal is gone from the payload and is not coming back to unblock them.
 
+## The number to ring when a sales interest lands is BRAND grain, and absence is the answer
+
+`brand_sales_rep_phones` (PK `(org_id, brand_id)`, `phone` text NOT NULL) holds the ONE number to ring when a prospect replies to one of the brand's campaigns saying they are interested — the rep on it is phoned within the minute. Owner: `src/services/salesRepPhoneService.ts`; routes: `src/routes/sales-rep-phone.routes.ts` (GET / PUT / DELETE `/orgs/brands/:brandId/sales-rep-phone`).
+
+**BRAND grain, and campaign grain is the wrong answer even though it looks plausible.** A campaign is (offer x funnel x channel), so storing the number there means retyping one fact once per channel selling the same offer — the brand this was built for already runs four channels on a single offer, four rows drifting from the first edit. A brand with no campaign yet could declare nothing at all, and a newly created campaign would start with no rep and silently place no call. The rep answers for the BRAND.
+
+**Nothing is defaulted, inferred or borrowed.** The user row's phone is the account holder's own number and answers a different question ("who signed up", not "who picks up when a buyer says yes"), and the WhatsApp link is a click destination, not a number to dial. Neither is a fallback here, and there is no platform default. A brand with no row reads `salesRepPhone: null` — a first-class "nobody to ring", never an empty string and never an error, because most brands will never state one.
+
+**Normalised on WRITE, to strict E.164.** The consumer hands the value straight to a telephony provider, so a number that reaches the dialler unusable is a call that never happens, silently — the one failure this must not have. `normalizeSalesRepPhone` accepts whatever format a person typed (spaces, dashes, parens, dots) as long as it carries a country code (`+` or the international `00` prefix, 8-15 digits) and stores `+<digits>`. A national number with no country code is REFUSED 400 rather than completed from the brand's domain, the org, or a default country: a guessed country dials a different person.
+
+**Served on the INTERNAL brand read only.** `salesRepPhone` is on `getBrandDetail` behind `includeSalesRepPhone`, which `GET /internal/brands/:id` and the internal batch read pass and the PUBLIC read (unauthenticated) and the share-token resolve do not — the field is ABSENT there, not null, so neither payload gained per-org contact data. Org scoping on that read: `x-org-id` when the caller sends it, else the number only when a SINGLE org has stated one for the brand (21 production brands are claimed by more than one org, and serving one org's rep to another company's caller is the leak `0050` closed). An ambiguous read answers `null`, not a 400 — absence is already a first-class answer here, so the brand read stays always-200.
+
+**Carried by `rewriteBrandReferences`** like the other user-authored one-row-per-(org, brand) tables — leaving it behind would strand a stated number on an abandoned brand row.
+
+**An offer-scoped override is the anticipated widening** (two offers sold by two different closers, a self-serve one and an enterprise one). It is not built, and nothing here forecloses it: it would be an additive read in FRONT of this one, never a re-key of this table. Migration `0060`. Regression: `tests/unit/salesRepPhone.test.ts`, `tests/integration/salesRepPhone.test.ts`.
+
 ## Per-brand CONFIG is keyed on `(org_id, brand_id)` — `brand_id` alone is a cross-org leak
 
 `brands` is the global SILVER identity: one row per normalized domain, deliberately shared. `getOrCreateBrand` hands any org the existing row when the domain already exists and then inserts an `org_brands` membership with **no guard**, and `resolveBrandOwnership` only checks that membership. So keying configuration on `brand_id` alone meant any org could `POST /orgs/brands { url }` with somebody else's domain and read — or overwrite — their private data. This was live: 21 production brands are claimed by more than one org (one by ten), 16 carrying sales economics, 9 confirmed fields.

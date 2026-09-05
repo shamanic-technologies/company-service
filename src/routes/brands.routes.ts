@@ -332,10 +332,26 @@ internalRouter.post('/brands/identity-by-org', async (req: Request, res: Respons
 export const publicRouter = Router();
 
 /**
+ * The org an internal (service-auth) brand read is about, when the caller sent
+ * one. Internal callers legitimately hold org ids that are not their own, and a
+ * brand may be claimed by several orgs, so per-org config on the brand read is
+ * scoped by this header. Absent is not an error: the resolution below answers
+ * only where a single org stated a value (see `resolveForBrandRead`).
+ */
+function orgIdFromHeader(req: Request): string | null {
+  const header = req.headers['x-org-id'];
+  const value = Array.isArray(header) ? header[0] : header;
+  return value && value.trim() !== '' ? value.trim() : null;
+}
+
+/**
  * Shared handler for GET /internal/brands/:id and GET /public/brands/:id.
  * Returns the canonical minimal brand shape with lazy fills.
+ *
+ * `internal` widens the payload with the org-scoped `salesRepPhone`; the public
+ * route (no auth) deliberately never carries it.
  */
-async function handleGetBrand(req: Request, res: Response) {
+async function handleGetBrand(req: Request, res: Response, internal = false) {
   try {
     const { id } = req.params;
     if (!UUID_REGEX.test(id)) {
@@ -346,7 +362,10 @@ async function handleGetBrand(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
     }
 
-    const brand = await getBrandDetail(id, { mode: 'platform' });
+    const brand = await getBrandDetail(id, { mode: 'platform' }, {
+      includeSalesRepPhone: internal,
+      orgId: internal ? orgIdFromHeader(req) : null,
+    });
     if (!brand) {
       return res.status(404).json({ error: 'Brand not found' });
     }
@@ -398,8 +417,8 @@ internalRouter.get('/brands/all', async (_req: Request, res: Response) => {
   }
 });
 
-internalRouter.get('/brands/:id', handleGetBrand);
-publicRouter.get('/brands/:id', handleGetBrand);
+internalRouter.get('/brands/:id', (req, res) => handleGetBrand(req, res, true));
+publicRouter.get('/brands/:id', (req, res) => handleGetBrand(req, res, false));
 
 /**
  * Shared handler for GET /internal/brands and GET /public/brands.
@@ -411,7 +430,7 @@ publicRouter.get('/brands/:id', handleGetBrand);
  * Capped at MAX_BATCH_IDS ids per request to keep query strings under common
  * HTTP server limits.
  */
-async function handleGetBrandsBatch(req: Request, res: Response) {
+async function handleGetBrandsBatch(req: Request, res: Response, internal = false) {
   try {
     const idsParam = req.query.ids;
     if (typeof idsParam !== 'string') {
@@ -433,7 +452,12 @@ async function handleGetBrandsBatch(req: Request, res: Response) {
     // De-dupe in case a caller passes the same id twice. Order is arbitrary
     // — callers map by `id`.
     const uniqueIds = Array.from(new Set(ids));
-    const loaded = await Promise.all(uniqueIds.map((id) => getBrandDetail(id, { mode: 'platform' })));
+    const orgId = internal ? orgIdFromHeader(req) : null;
+    const loaded = await Promise.all(
+      uniqueIds.map((id) =>
+        getBrandDetail(id, { mode: 'platform' }, { includeSalesRepPhone: internal, orgId })
+      )
+    );
     const brandsResponse = loaded.filter((b) => b !== null);
 
     res.json({ brands: brandsResponse });
@@ -443,8 +467,8 @@ async function handleGetBrandsBatch(req: Request, res: Response) {
   }
 }
 
-internalRouter.get('/brands', handleGetBrandsBatch);
-publicRouter.get('/brands', handleGetBrandsBatch);
+internalRouter.get('/brands', (req, res) => handleGetBrandsBatch(req, res, true));
+publicRouter.get('/brands', (req, res) => handleGetBrandsBatch(req, res, false));
 
 /**
  * GET /internal/brands/:id/runs

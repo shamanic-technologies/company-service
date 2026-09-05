@@ -28,6 +28,7 @@ import { searchBrandNameByDomain } from '../lib/logo-dev-search';
 import { getBrandCheckoutStatus } from '../lib/client-client';
 import { rewriteBrandReferences } from './brandMergeService';
 import { enqueueBrandColors, forgetBrandColors, resetBrandColorsForNewDomain } from './brandColorsService';
+import { salesRepPhoneService } from './salesRepPhoneService';
 
 interface Brand {
   id: string;
@@ -73,6 +74,17 @@ export interface BrandDetail {
   // name, or the domain. Retrieval is a decoupled cadence, never a read — see
   // services/brandColorsService.ts.
   colors: string[] | null;
+  // The one number to ring when a sales interest lands on this brand — a
+  // prospect replies to a campaign saying they are interested and the rep on
+  // this number is phoned within the minute. `null` is a first-class answer
+  // ("nobody to ring"): most brands never state one, and nothing is ever
+  // defaulted, inferred, or borrowed from another phone field. Strict E.164, so
+  // a consumer can hand it straight to a telephony provider.
+  //
+  // ABSENT (not null) on reads that do not ask for it — the public brand read
+  // and the share-token resolve, which reach a broader audience than the org.
+  // Per-brand config, org-scoped: see `salesRepPhoneService.resolveForBrandRead`.
+  salesRepPhone?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,9 +115,25 @@ export async function getBrand(brandId: string): Promise<Brand | null> {
   return result[0] || null;
 }
 
+export interface BrandDetailOptions {
+  /**
+   * Serve `salesRepPhone` on the returned brand. Off by default: the field is
+   * per-org contact data and the same shape is served by the PUBLIC brand read
+   * and the share-token resolve, which are deliberately not widened.
+   */
+  includeSalesRepPhone?: boolean;
+  /**
+   * The org the read is about, when the caller knows it (`x-org-id`). Used only
+   * to scope the org-keyed config above; when absent, the resolution answers
+   * only where a single org has stated a number (see `resolveForBrandRead`).
+   */
+  orgId?: string | null;
+}
+
 export async function getBrandDetail(
   brandId: string,
   caller: Caller,
+  options: BrandDetailOptions = {},
 ): Promise<BrandDetail | null> {
   const [row] = await db
     .select({
@@ -161,6 +189,11 @@ export async function getBrandDetail(
     // given-up retrieval reads exactly like a brand nobody ever asked about,
     // which is correct: in all three cases we have no colours to serve.
     colors: row.colors ?? null,
+    // Only served when the caller asked for it (internal reads); absent
+    // otherwise, so the public payload gained nothing.
+    ...(options.includeSalesRepPhone
+      ? { salesRepPhone: await salesRepPhoneService.resolveForBrandRead(row.id, options.orgId) }
+      : {}),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
