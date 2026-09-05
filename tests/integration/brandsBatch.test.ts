@@ -45,8 +45,10 @@ describe('GET /internal/brands and /public/brands — batch by ids', () => {
     const ids = res.body.brands.map((br: any) => br.id).sort();
     expect(ids).toEqual([a, b].sort());
     for (const brand of res.body.brands) {
+      // `salesRepPhone` is served on the INTERNAL read only — it is per-org
+      // contact data and the public variant below deliberately omits it.
       expect(Object.keys(brand).sort()).toEqual(
-        ['clickDestinationUrl', 'colors', 'createdAt', 'domain', 'id', 'logoUrl', 'name', 'updatedAt', 'url', 'whatsAppLink'],
+        ['clickDestinationUrl', 'colors', 'createdAt', 'domain', 'id', 'logoUrl', 'name', 'salesRepPhone', 'updatedAt', 'url', 'whatsAppLink'],
       );
     }
   }, 15000);
@@ -136,7 +138,11 @@ describe('GET /internal/brands and /public/brands — batch by ids', () => {
     expect(row.logoUrl).toBe(brand.logoUrl);
   }, 15000);
 
-  it('GET /public/brands?ids returns the same payload as the internal variant', async () => {
+  // The public route is unauthenticated, so it carries everything the internal
+  // read does EXCEPT `salesRepPhone` — the number to ring when a sales interest
+  // lands, which is per-org contact data and must not be readable by anyone who
+  // knows a brand id.
+  it('GET /public/brands?ids returns the internal payload minus salesRepPhone', async () => {
     const a = await insertBrand({ name: 'A', logoUrl: 'https://img.logo.dev/a?token=x', domain: `batch-public-a-${Date.now()}.example.com` });
     const b = await insertBrand({ name: 'B', logoUrl: 'https://img.logo.dev/b?token=x', domain: `batch-public-b-${Date.now()}.example.com` });
 
@@ -150,7 +156,12 @@ describe('GET /internal/brands and /public/brands — batch by ids', () => {
 
     const sortedInternal = [...internalRes.body.brands].sort((x, y) => x.id.localeCompare(y.id));
     const sortedPublic = [...publicRes.body.brands].sort((x, y) => x.id.localeCompare(y.id));
-    expect(sortedPublic).toEqual(sortedInternal);
+    for (const brand of sortedPublic) {
+      expect(brand).not.toHaveProperty('salesRepPhone');
+    }
+    expect(sortedPublic).toEqual(
+      sortedInternal.map(({ salesRepPhone, ...rest }: any) => rest),
+    );
   }, 15000);
 
   it('GET /internal/brands without API key returns 401', async () => {

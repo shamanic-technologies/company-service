@@ -93,6 +93,7 @@ export const BrandDetailSchema = z
     clickDestinationUrl: z.string().nullable().openapi({ description: 'Page outreach clicks should land on. Defaults to the brand\'s own landing URL (`url`) when the user has not set an override. `null` only for a no-website brand with no override (no landing URL to fall back to). Per-brand config, set via PUT /orgs/brands/{brandId}/click-destination.' }),
     whatsAppLink: z.string().nullable().openapi({ description: 'The brand\'s WhatsApp link — the click destination for the "maximize WhatsApp conversations" goal. `null` when unset (no sensible default, unlike clickDestinationUrl). Per-brand config, set via PUT /orgs/brands/{brandId}/whatsapp-link.' }),
     colors: z.array(z.string()).nullable().openapi({ description: 'The brand\'s own colour palette — hex strings in the order logo.dev\'s Brand API returns them (e.g. ["#000103","#ce2e36","#003366"]). Nothing is pre-filtered or ranked; the consumer selects. `null` means WE HAVE NO COLOURS for this brand (the provider has not indexed the domain yet, or has no palette for it) — a first-class answer a consumer falls back to its own charter on. No colour is ever invented, defaulted, or derived from the logo, the name, or the domain.' }),
+    salesRepPhone: z.string().nullable().optional().openapi({ description: 'The one number to ring when a sales interest lands on this brand (a prospect replies to a campaign saying they are interested, and the rep on this number is phoned within the minute). Strict E.164, ready to hand to a telephony provider. `null` means the brand never stated one — a first-class "nobody to ring", never an empty string and never inferred from any other phone field. Per-brand config, set via PUT /orgs/brands/{brandId}/sales-rep-phone and removed via DELETE. Served on the INTERNAL brand reads only (org-scoped by `x-org-id`); ABSENT from the public brand read and the share-token resolve.' }),
     createdAt: z.string().openapi({ description: 'ISO timestamp when the brand row was created.' }),
     updatedAt: z.string().openapi({ description: 'ISO timestamp when the brand row was last updated.' }),
   })
@@ -3533,6 +3534,120 @@ registry.registerPath({
     200: { description: 'The active funnels of this offer', content: { 'application/json': { schema: GetSalesFunnelsResponseSchema } } },
     400: { description: 'Invalid offer ID format' },
     404: { description: 'Offer not found' },
+    500: { description: 'Internal server error' },
+  },
+});
+
+
+// ── Sales rep phone (per-brand config) ──────────────────────────────────────
+// WRITE request: a phone number typed in any format, as long as it carries a
+// country code. Normalized to strict E.164 before storage.
+export const UpsertSalesRepPhoneRequestSchema = z
+  .object({
+    salesRepPhone: z
+      .string()
+      .min(1)
+      .openapi({
+        description:
+          'The number to ring when a sales interest lands on this brand. Accepts any typed ' +
+          'format (spaces, dashes, parentheses, dots) as long as it carries a country code — ' +
+          'either a leading `+` or the international `00` prefix — and is 8-15 digits. Stored ' +
+          'in strict E.164 (`+33770657585`). A national number with no country code is rejected ' +
+          '400: no country is inferred, because a guess dials a different person.',
+        example: '+33770657585',
+      }),
+  })
+  .openapi('UpsertSalesRepPhoneRequest');
+
+// WRITE response: the saved, normalized value (never null — you just wrote it).
+export const UpsertSalesRepPhoneResponseSchema = z
+  .object({
+    salesRepPhone: z.string().openapi({ description: 'The saved number, in strict E.164.' }),
+  })
+  .openapi('UpsertSalesRepPhoneResponse');
+
+// READ / DELETE response: `null` when the brand has no number to ring.
+export const SalesRepPhoneResponseSchema = z
+  .object({
+    salesRepPhone: z
+      .string()
+      .nullable()
+      .openapi({ description: 'The number to ring, in strict E.164, or `null` when unset.' }),
+  })
+  .openapi('SalesRepPhoneResponse');
+
+registry.registerPath({
+  method: 'get',
+  path: '/orgs/brands/{brandId}/sales-rep-phone',
+  summary: "Read a brand's sales rep phone",
+  description:
+    'The one number to ring when a sales interest lands on this brand, or `null` when the brand ' +
+    'never stated one ("nobody to ring" — a first-class answer, not an error). Per-brand config ' +
+    "keyed on (org, brand). The brand must belong to the caller's org (x-org-id).",
+  request: { params: z.object({ brandId: z.string().uuid() }) },
+  responses: {
+    200: {
+      description: 'The saved number, or null when unset',
+      content: { 'application/json': { schema: SalesRepPhoneResponseSchema } },
+    },
+    400: { description: 'Invalid brand ID format' },
+    403: { description: "Brand does not belong to the caller's org" },
+    404: { description: 'Brand not found' },
+    500: { description: 'Internal server error' },
+  },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: '/orgs/brands/{brandId}/sales-rep-phone',
+  summary: "Set a brand's sales rep phone",
+  description:
+    'State (or change) the one number to ring when a sales interest lands on this brand — a ' +
+    'prospect replies to one of its campaigns saying they are interested, and the rep on this ' +
+    'number is phoned within the minute. BRAND grain (per-brand config keyed on (org, brand), ' +
+    'mirroring the click-destination / WhatsApp-link write routes), so one number covers every ' +
+    'offer, funnel and channel the brand runs. Body `{ salesRepPhone }` accepts any typed format ' +
+    'carrying a country code (`+` or `00` prefix, 8-15 digits) and is normalized to strict E.164 ' +
+    'before storage, because the consumer hands the value straight to a telephony provider. A ' +
+    'national number with no country code, or anything unparseable, is rejected 400 — nothing is ' +
+    'inferred. Idempotent upsert. Returns `{ salesRepPhone }` (the saved, normalized value). The ' +
+    "brand must belong to the caller's org (x-org-id). Read it back here, or via the " +
+    '`salesRepPhone` field on the INTERNAL brand read (GET /internal/brands/{id} and the batch ' +
+    'read), `null` when unset.',
+  request: {
+    params: z.object({ brandId: z.string().uuid() }),
+    body: { content: { 'application/json': { schema: UpsertSalesRepPhoneRequestSchema } } },
+  },
+  responses: {
+    200: {
+      description: 'Saved sales rep phone',
+      content: { 'application/json': { schema: UpsertSalesRepPhoneResponseSchema } },
+    },
+    400: { description: 'Invalid brand ID format, or a missing / unparseable / country-code-less number' },
+    403: { description: "Brand does not belong to the caller's org" },
+    404: { description: 'Brand not found' },
+    500: { description: 'Internal server error' },
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/orgs/brands/{brandId}/sales-rep-phone',
+  summary: "Remove a brand's sales rep phone",
+  description:
+    'Remove the number: the brand goes back to "nobody to ring" and the brand read reports ' +
+    '`salesRepPhone: null`. Idempotent — removing a number that was never stated is a 200 with ' +
+    '`{ salesRepPhone: null }`, not a 404, because absence is a legitimate state rather than a ' +
+    "missing resource. The brand must belong to the caller's org (x-org-id).",
+  request: { params: z.object({ brandId: z.string().uuid() }) },
+  responses: {
+    200: {
+      description: 'Removed — the brand now has no number to ring',
+      content: { 'application/json': { schema: SalesRepPhoneResponseSchema } },
+    },
+    400: { description: 'Invalid brand ID format' },
+    403: { description: "Brand does not belong to the caller's org" },
+    404: { description: 'Brand not found' },
     500: { description: 'Internal server error' },
   },
 });

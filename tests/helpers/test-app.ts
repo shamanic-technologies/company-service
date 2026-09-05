@@ -16,6 +16,7 @@ import { orgRouter as userFieldsOrgRoutes } from '../../src/routes/user-fields.r
 import { orgRouter as brandGoalOrgRoutes, internalRouter as brandGoalInternalRoutes } from '../../src/routes/brand-goal.routes';
 import { orgRouter as clickDestinationOrgRoutes } from '../../src/routes/click-destination.routes';
 import { orgRouter as whatsAppLinkOrgRoutes } from '../../src/routes/whatsapp-link.routes';
+import { orgRouter as salesRepPhoneOrgRoutes } from '../../src/routes/sales-rep-phone.routes';
 import { orgRouter as businessContextOrgRoutes } from '../../src/routes/business-context.routes';
 import { orgRouter as shareTokenOrgRoutes, internalRouter as shareTokenInternalRoutes } from '../../src/routes/share-token.routes';
 import { orgRouter as offersOrgRoutes, internalRouter as offersInternalRoutes } from '../../src/routes/offers.routes';
@@ -83,6 +84,7 @@ app.use('/orgs', apiKeyAuth, requireOrgId, salesFunnelsOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, brandGoalOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, clickDestinationOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, whatsAppLinkOrgRoutes);
+app.use('/orgs', apiKeyAuth, requireOrgId, salesRepPhoneOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, businessContextOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, shareTokenOrgRoutes);
   app.use('/orgs', apiKeyAuth, requireOrgId, offersOrgRoutes);

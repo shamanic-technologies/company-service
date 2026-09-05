@@ -42,12 +42,14 @@ describe('GET /internal/brands/:id and /public/brands/:id — minimal shape', ()
 
     expect(res.status).toBe(200);
     expect(Object.keys(res.body.brand).sort()).toEqual(
-      ['clickDestinationUrl', 'colors', 'createdAt', 'domain', 'id', 'logoUrl', 'name', 'updatedAt', 'url', 'whatsAppLink'],
+      ['clickDestinationUrl', 'colors', 'createdAt', 'domain', 'id', 'logoUrl', 'name', 'salesRepPhone', 'updatedAt', 'url', 'whatsAppLink'],
     );
     // Unset brand: producer defaults clickDestinationUrl to the brand's own url.
     expect(res.body.brand.clickDestinationUrl).toBe(url);
     // Unset brand: whatsAppLink has no sensible default → null.
     expect(res.body.brand.whatsAppLink).toBeNull();
+    // Unset brand: nobody to ring → null, never an empty string.
+    expect(res.body.brand.salesRepPhone).toBeNull();
     expect(res.body.brand.bio).toBeUndefined();
     expect(res.body.brand.categories).toBeUndefined();
     expect(res.body.brand.mission).toBeUndefined();
@@ -55,7 +57,10 @@ describe('GET /internal/brands/:id and /public/brands/:id — minimal shape', ()
     expect(res.body.brand.location).toBeUndefined();
   }, 15000);
 
-  it('GET /public/brands/:id returns identical shape to /internal/brands/:id', async () => {
+  // The public read carries the internal shape MINUS `salesRepPhone`: that one
+  // is per-org contact data (the number rung when a sales interest lands) and
+  // the public route is unauthenticated.
+  it('GET /public/brands/:id returns the internal shape minus salesRepPhone', async () => {
     const orgId = randomUUID();
     createdOrgIds.push(orgId);
     const id = randomUUID();
@@ -78,7 +83,9 @@ describe('GET /internal/brands/:id and /public/brands/:id — minimal shape', ()
 
     expect(internalRes.status).toBe(200);
     expect(publicRes.status).toBe(200);
-    expect(publicRes.body).toEqual(internalRes.body);
+    expect(publicRes.body.brand).not.toHaveProperty('salesRepPhone');
+    const { salesRepPhone, ...internalBrand } = internalRes.body.brand;
+    expect(publicRes.body.brand).toEqual(internalBrand);
   }, 15000);
 
   it('lazy-fills logoUrl from logo.dev and persists when null', async () => {
