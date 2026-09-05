@@ -223,6 +223,48 @@ export const brandWhatsappLinks = pgTable("brand_whatsapp_links", {
 ]);
 
 /**
+ * Brand-level SALES REP PHONE — the one number to ring when a sales interest
+ * lands on this brand. When a prospect replies to one of the brand's cold-email
+ * campaigns saying they are interested, the rep on this number is phoned within
+ * the minute; without a row there is nobody to ring.
+ *
+ * BRAND grain, keyed on (org_id, brand_id) like every other per-brand config
+ * (never on the `brands` identity row, which several orgs share). Deliberately
+ * NOT campaign grain: a campaign is (offer x funnel x channel), so a brand
+ * running four channels on one offer would retype one fact four times and drift
+ * from the first edit, and a brand with no campaign yet could declare nothing at
+ * all. The rep answers for the brand.
+ *
+ * `phone` is NOT NULL — the row's presence IS the "set" signal. Absence is a
+ * first-class answer ("nobody to ring") and reads as `salesRepPhone: null` on
+ * the brand read: never an empty string, never an error, and never defaulted or
+ * inferred from any other phone field (the user row's phone answers a different
+ * question, and the WhatsApp link is a click destination, not a number to dial).
+ *
+ * Stored in strict E.164 (`+<country><subscriber>`), normalized on write: the
+ * consumer hands the value straight to a telephony provider, and a value that
+ * reaches the dialler unusable is a call that never happens, silently.
+ *
+ * Future-compatible with an offer-scoped override (two offers sold by two
+ * different closers): that would be an ADDITIVE table/column read in front of
+ * this one, so nothing here forecloses it.
+ */
+export const brandSalesRepPhones = pgTable("brand_sales_rep_phones", {
+	orgId: uuid("org_id").notNull(),
+	brandId: uuid("brand_id").notNull(),
+	phone: text("phone").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	primaryKey({ columns: [table.orgId, table.brandId] }),
+	foreignKey({
+		columns: [table.brandId],
+		foreignColumns: [brands.id],
+		name: "brand_sales_rep_phones_brand_id_fkey",
+	}).onDelete("cascade"),
+]);
+
+/**
  * Brand SHARE token — the per-brand read-only share credential. A member of an
  * org that claims the brand mints one on demand so somebody OUTSIDE the org (an
  * investor, a client, a colleague) can open a read-only public brand page with
