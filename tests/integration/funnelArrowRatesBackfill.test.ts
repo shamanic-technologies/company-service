@@ -14,6 +14,7 @@ import {
   applyArrowRatesBackfill,
   readArrowRatesBackfillCandidates,
 } from '../../src/services/funnelArrowRatesBackfillService';
+import { writeArrowRates } from '../../src/services/salesFunnelArrowRatesService';
 
 /**
  * Every rate a brand has already stated is expressed as a rate for the funnel
@@ -214,5 +215,16 @@ describe('Arrow-rate backfill', () => {
     // And a run afterwards writes the copy again, so the undo is not one-way.
     await run();
     expect(await arrowsOf(namedBrandId)).toHaveLength(2);
+  });
+
+  it('a customer restating a copied arrow makes it theirs, so the undo spares it', async () => {
+    await writeArrowRates(orgId, namedBrandId, offerOf.get(namedBrandId)!, KEY, [
+      { fromStep: 'Positive reply', toStep: 'Meeting booked', ratePct: 7 },
+    ]);
+
+    const restated = (await arrowsOf(namedBrandId)).find((r) => r.toStep === 'Meeting booked');
+    expect(restated).toMatchObject({ ratePct: 7 });
+    // No longer the backfill's row: it is what the customer just said.
+    expect(restated!.backfilledAt).toBeNull();
   });
 });
