@@ -490,6 +490,13 @@ export const brandSalesFunnels = pgTable("brand_sales_funnels", {
 	// that backfill identifiable (so it can be undone by an exact predicate) and
 	// what makes a re-run a no-op. Read by nothing.
 	economicsBackfilledAt: timestamp("economics_backfilled_at", { withTimezone: true, mode: 'string' }),
+	// PROVENANCE, for the one-time backfill that made every rate this row states
+	// through a named column ALSO readable as the rate of the arrow it is about.
+	// Set to the moment the arrows were written from this declaration; NULL for a
+	// declaration the backfill has never processed. It is what makes a second run
+	// a no-op — and, just as importantly, what stops a re-run from resurrecting an
+	// arrow the customer deleted after the first one. Read by nothing.
+	arrowRatesBackfilledAt: timestamp("arrow_rates_backfilled_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
@@ -574,6 +581,13 @@ export const brandSalesFunnelArrowRates = pgTable("brand_sales_funnel_arrow_rate
 	// between the two vocabularies is byte-identical. NOT NULL — clearing a rate
 	// deletes the row, which is what keeps "not stated" a single state.
 	ratePct: numeric("rate_pct", { precision: 7, scale: 4, mode: "number" }).notNull(),
+	// PROVENANCE: this row was COPIED from the named rate column describing the
+	// same arrow, by the one-time backfill, rather than stated arrow-first by a
+	// customer. Set to the moment of the copy; NULL for every arrow a caller wrote
+	// directly. It is what makes the backfill reversible by an exact predicate
+	// (`DELETE ... WHERE backfilled_at IS NOT NULL`) instead of a timestamp window.
+	// Read by nothing: precedence does not care where a stated arrow came from.
+	backfilledAt: timestamp("backfilled_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
