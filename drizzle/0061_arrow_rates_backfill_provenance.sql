@@ -1,0 +1,22 @@
+-- Provenance for the one-time arrow-rate backfill.
+--
+-- Every rate a brand has stated so far lives in a NAMED column on
+-- `brand_sales_funnels`, and each of those columns IS the rate of one arrow of
+-- one funnel. The backfill makes the same statement readable in the arrow
+-- vocabulary without moving a figure. These two columns are what make that run
+-- identifiable, re-runnable and reversible:
+--
+--   -- what it wrote
+--   SELECT count(*) FROM brand_sales_funnel_arrow_rates WHERE backfilled_at IS NOT NULL;
+--   -- undoing it, exactly, without touching an arrow a customer stated
+--   DELETE FROM brand_sales_funnel_arrow_rates WHERE backfilled_at IS NOT NULL;
+--   UPDATE brand_sales_funnels SET arrow_rates_backfilled_at = NULL
+--    WHERE arrow_rates_backfilled_at IS NOT NULL;
+--
+-- `arrow_rates_backfilled_at` is also the whole of idempotency: a declaration
+-- carrying one is not a candidate again, so a second run writes nothing AND
+-- cannot resurrect an arrow the customer deleted after the first.
+--
+-- NULL for every arrow a caller wrote directly. Read by nothing.
+ALTER TABLE "brand_sales_funnels" ADD COLUMN IF NOT EXISTS "arrow_rates_backfilled_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "brand_sales_funnel_arrow_rates" ADD COLUMN IF NOT EXISTS "backfilled_at" timestamp with time zone;
